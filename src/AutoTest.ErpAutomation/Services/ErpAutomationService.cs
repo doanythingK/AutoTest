@@ -108,8 +108,13 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[21/30] 계산 결과가 정상 반영되었는지 확인합니다.", async () =>
             {
+                var calculationExpectations = new object[]
+                {
+                    new { label = "공급가액", values = input.SupplyAmountCandidates },
+                    new { label = "세액", values = input.TaxAmountCandidates }
+                };
                 var hasZeroAmount = await PageHasZeroNearAnyLabelAsync(page, new[] { "공급가액", "세액" }, cancellationToken);
-                var ok = await PageContainsAllGroupsAsync(page, input.CalculationResultGroups, cancellationToken);
+                var ok = await PageHasExpectedValuesNearLabelsAsync(page, calculationExpectations, cancellationToken);
                 if (hasZeroAmount || !ok)
                 {
                     progress.Report(AutomationProgress.Warning("공급가액/세액이 0이거나 기대값을 찾지 못했습니다. 수량과 단가를 다시 입력한 뒤 계산을 재시도합니다."));
@@ -118,7 +123,7 @@ public sealed class ErpAutomationService
                     await ClickTextAsync(page, "계산", stepTimeout, cancellationToken);
                 }
 
-                await WaitUntilAllGroupsAsync(page, input.CalculationResultGroups, stepTimeout, cancellationToken);
+                await WaitUntilExpectedValuesNearLabelsAsync(page, calculationExpectations, stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, $"[22/30] 계정코드(대변)에 {input.CreditAccountCode} 값을 입력하고 Enter를 실행합니다.", () =>
@@ -488,6 +493,27 @@ public sealed class ErpAutomationService
         throw new TimeoutException($"라인 목록 행에서 다음 항목 조합을 찾지 못했습니다: {string.Join(", ", expected)}");
     }
 
+    private static async Task WaitUntilExpectedValuesNearLabelsAsync(
+        IPage page,
+        IReadOnlyCollection<object> expectations,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        var deadline = DateTime.UtcNow.Add(timeout);
+        while (DateTime.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (await PageHasExpectedValuesNearLabelsAsync(page, expectations, cancellationToken))
+            {
+                return;
+            }
+
+            await Task.Delay(500, cancellationToken);
+        }
+
+        throw new TimeoutException("공급가액/세액 라벨 주변에서 기대 계산 결과를 찾지 못했습니다.");
+    }
+
     private static async Task<bool> PageContainsAnyAsync(IPage page, IReadOnlyCollection<string> texts, CancellationToken cancellationToken)
     {
         foreach (var frame in page.Frames)
@@ -524,6 +550,80 @@ public sealed class ErpAutomationService
                         return texts.some(text => bodyText.includes(text) || bodyKey.includes(normalizeKey(text)));
                     }",
                     texts);
+                if (found)
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // Some transient frames can disappear while the ERP screen is changing.
+            }
+        }
+
+        return false;
+    }
+
+    private static async Task<bool> PageHasExpectedValuesNearLabelsAsync(
+        IPage page,
+        IReadOnlyCollection<object> expectations,
+        CancellationToken cancellationToken)
+    {
+        foreach (var frame in page.Frames)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var found = await frame.EvaluateAsync<bool>(
+                    @"(expectations) => {
+                        const normalizeText = value => String(value || '').replace(/\s+/g, ' ').trim();
+                        const normalizeKey = value => normalizeText(value).replace(/\s/g, '');
+                        const normalizeNumber = value => String(value || '').replace(/[,\s]/g, '');
+                        const visible = element => {
+                            const style = window.getComputedStyle(element);
+                            const rect = element.getBoundingClientRect();
+                            return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+                        };
+                        const valueOf = element => normalizeText([
+                            element.value,
+                            element.innerText,
+                            element.textContent,
+                            element.title,
+                            element.getAttribute('aria-label')
+                        ].filter(Boolean).join(' '));
+                        const valuesNearLabel = labelElement => {
+                            const values = [];
+                            const row = labelElement.closest('tr');
+                            if (row) {
+                                values.push(...Array.from(row.querySelectorAll('input:not([type=hidden]), textarea, td, span, div'))
+                                    .filter(element => element !== labelElement && visible(element))
+                                    .map(valueOf));
+                            }
+
+                            const labelRect = labelElement.getBoundingClientRect();
+                            values.push(...Array.from(document.querySelectorAll('input:not([type=hidden]), textarea, td, span, div'))
+                                .filter(element => element !== labelElement && visible(element))
+                                .map(element => ({ element, rect: element.getBoundingClientRect() }))
+                                .filter(item => Math.abs(item.rect.top - labelRect.top) < 70 && item.rect.left >= labelRect.left)
+                                .sort((a, b) => Math.abs(a.rect.left - labelRect.right) - Math.abs(b.rect.left - labelRect.right))
+                                .slice(0, 4)
+                                .map(item => valueOf(item.element)));
+                            return values.filter(Boolean).map(normalizeNumber);
+                        };
+                        const candidates = Array.from(document.querySelectorAll('label, th, td, span, div'))
+                            .filter(element => visible(element));
+                        return expectations.every(expectation => {
+                            const labelKey = normalizeKey(expectation.label);
+                            const expectedValues = Array.from(expectation.values || []).map(normalizeNumber);
+                            return candidates.some(labelElement => {
+                                const candidateKey = normalizeKey(labelElement.innerText || labelElement.textContent || labelElement.title);
+                                if (!candidateKey.includes(labelKey)) return false;
+                                const nearbyValues = valuesNearLabel(labelElement);
+                                return expectedValues.some(expected => nearbyValues.some(value => value.includes(expected)));
+                            });
+                        });
+                    }",
+                    expectations);
                 if (found)
                 {
                     return true;
