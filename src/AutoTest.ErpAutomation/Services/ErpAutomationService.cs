@@ -30,6 +30,7 @@ public sealed class ErpAutomationService
 
         var page = await GetOrCreatePageAsync(context);
         page.SetDefaultTimeout((float)stepTimeout.TotalMilliseconds);
+        AttachDialogHandler(page, progress);
 
         try
         {
@@ -153,6 +154,22 @@ public sealed class ErpAutomationService
             ?? await context.NewPageAsync();
         await page.BringToFrontAsync();
         return page;
+    }
+
+    private static void AttachDialogHandler(IPage page, IProgress<AutomationProgress> progress)
+    {
+        page.Dialog += async (_, dialog) =>
+        {
+            progress.Report(AutomationProgress.Info($"브라우저 대화상자 자동 확인: {dialog.Type} - {dialog.Message}"));
+            try
+            {
+                await dialog.AcceptAsync();
+            }
+            catch (Exception ex)
+            {
+                progress.Report(AutomationProgress.Warning($"브라우저 대화상자 확인 실패: {ex.Message}"));
+            }
+        };
     }
 
     private static async Task StepAsync(IProgress<AutomationProgress> progress, string message, Func<Task> action)
