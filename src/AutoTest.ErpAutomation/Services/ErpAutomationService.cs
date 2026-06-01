@@ -265,7 +265,19 @@ public sealed class ErpAutomationService
                 });
                 if (!found) return false;
                 found.scrollIntoView({ block: 'center', inline: 'center' });
-                found.click();
+                const rect = found.getBoundingClientRect();
+                const x = rect.left + rect.width / 2;
+                const y = rect.top + rect.height / 2;
+                const target = document.elementFromPoint(x, y) || found;
+                const eventOptions = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+                target.dispatchEvent(new PointerEvent('pointerdown', eventOptions));
+                target.dispatchEvent(new MouseEvent('mousedown', eventOptions));
+                target.dispatchEvent(new PointerEvent('pointerup', eventOptions));
+                target.dispatchEvent(new MouseEvent('mouseup', eventOptions));
+                target.dispatchEvent(new MouseEvent('click', eventOptions));
+                if (target !== found) {
+                    found.click();
+                }
                 return true;
             }",
             text);
@@ -353,7 +365,16 @@ public sealed class ErpAutomationService
                     if (target) {
                         target.control.scrollIntoView({ block: 'center', inline: 'center' });
                         target.control.focus();
-                        target.control.click();
+                        const rect = target.control.getBoundingClientRect();
+                        const x = rect.left + rect.width / 2;
+                        const y = rect.top + rect.height / 2;
+                        const clicked = document.elementFromPoint(x, y) || target.control;
+                        const eventOptions = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+                        clicked.dispatchEvent(new PointerEvent('pointerdown', eventOptions));
+                        clicked.dispatchEvent(new MouseEvent('mousedown', eventOptions));
+                        clicked.dispatchEvent(new PointerEvent('pointerup', eventOptions));
+                        clicked.dispatchEvent(new MouseEvent('mouseup', eventOptions));
+                        clicked.dispatchEvent(new MouseEvent('click', eventOptions));
                         return true;
                     }
                 }

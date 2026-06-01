@@ -41,6 +41,7 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 ## 구현 메모
 
 - ERP 화면 selector가 확정되어 있지 않아 텍스트 버튼과 라벨 주변 입력칸을 찾는 방식으로 동작한다.
+- 클릭은 찾은 요소의 화면상 중앙 위치를 기준으로 pointer/mouse 이벤트를 발생시켜 처리한다.
 - ERP 화면 구조가 바뀌거나 동일한 라벨이 여러 개 있으면 정확한 selector 보강이 필요하다.
 - 프로그램은 자동화 중 기존 Chrome 탭을 닫지 않는다.
 - 로그인 아이디/비밀번호 입력 필드는 자동화 코드에서 채우지 않는다.
