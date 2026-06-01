@@ -78,7 +78,15 @@ public sealed class ErpAutomationService
             await StepAsync(progress, "[10/30] 원화 버튼을 클릭합니다.", () => ClickTextAsync(page, "원화", stepTimeout, cancellationToken));
 
             await StepAsync(progress, $"[11/30] 거래일자에 오늘 날짜({input.TransactionDateText})를 입력합니다.", () =>
-                FillNearAnyLabelAsync(page, new[] { "거래일자", "거래 일자", "일자" }, input.TransactionDateCandidates, pressEnter: false, stepTimeout, cancellationToken));
+                FillNearAnyLabelAndVerifyAsync(
+                    page,
+                    new[] { "거래일자", "거래 일자", "일자" },
+                    input.TransactionDateCandidates,
+                    new[] { "거래일자", "거래 일자" },
+                    input.TransactionDateCandidates,
+                    pressEnter: false,
+                    stepTimeout,
+                    cancellationToken));
 
             await StepAsync(progress, "[12/30] 차변에서 외상매출금 [1141]을 선택합니다.", async () =>
             {
@@ -105,10 +113,26 @@ public sealed class ErpAutomationService
             });
 
             await StepAsync(progress, $"[14/30] 거래처코드/명에 {input.ClientCode} 값을 입력하고 Enter를 실행합니다.", () =>
-                FillNearAnyLabelAsync(page, new[] { "거래처코드/명", "거래처코드", "거래처명" }, input.ClientCode, pressEnter: true, stepTimeout, cancellationToken));
+                FillNearAnyLabelAndVerifyAsync(
+                    page,
+                    new[] { "거래처코드/명", "거래처코드", "거래처명" },
+                    input.ClientCode,
+                    new[] { "거래처코드/명", "거래처코드", "거래처명" },
+                    new[] { input.ClientCode },
+                    pressEnter: true,
+                    stepTimeout,
+                    cancellationToken));
 
             await StepAsync(progress, "[15/30] 담당부서에 20을 입력하고 Enter를 실행합니다.", () =>
-                FillNearAnyLabelAsync(page, new[] { "담당부서", "부서" }, "20", pressEnter: true, stepTimeout, cancellationToken));
+                FillNearAnyLabelAndVerifyAsync(
+                    page,
+                    new[] { "담당부서", "부서" },
+                    "20",
+                    new[] { "담당부서", "부서" },
+                    new[] { "20" },
+                    pressEnter: true,
+                    stepTimeout,
+                    cancellationToken));
 
             await StepAsync(progress, "[16/30] 전자(세금)계산서 발송구분에서 국세청HTS를 선택합니다.", async () =>
             {
@@ -123,7 +147,17 @@ public sealed class ErpAutomationService
             });
 
             await StepAsync(progress, $"[17/30] 품목코드/품목명(적요)에 {AutomationInput.ItemText}를 입력합니다.", () =>
-                FillNearAnyLabelAsync(page, new[] { "품목코드/품목명(적요)", "품목코드/품목명", "품목명(적요)", "적요" }, AutomationInput.ItemText, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true, preferWideControl: true));
+                FillNearAnyLabelAndVerifyAsync(
+                    page,
+                    new[] { "품목코드/품목명(적요)", "품목코드/품목명", "품목명(적요)", "적요" },
+                    AutomationInput.ItemText,
+                    new[] { "품목코드/품목명(적요)", "품목코드/품목명", "품목명(적요)" },
+                    new[] { AutomationInput.ItemText },
+                    pressEnter: false,
+                    stepTimeout,
+                    cancellationToken,
+                    preferLowerArea: true,
+                    preferWideControl: true));
 
             await StepAsync(progress, $"[18/30] 수량에 {input.QuantityText} 값을 입력합니다.", () =>
                 FillNearLabelAsync(page, "수량", input.QuantityInputCandidates, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true));
@@ -154,7 +188,16 @@ public sealed class ErpAutomationService
             });
 
             await StepAsync(progress, $"[22/30] 계정코드(대변)에 {input.CreditAccountCode} 값을 입력하고 Enter를 실행합니다.", () =>
-                FillNearAnyLabelAsync(page, new[] { "계정코드(대변)", "계정코드", "대변" }, input.CreditAccountCode, pressEnter: true, stepTimeout, cancellationToken, preferLowerArea: true));
+                FillNearAnyLabelAndVerifyAsync(
+                    page,
+                    new[] { "계정코드(대변)", "계정코드", "대변" },
+                    input.CreditAccountCode,
+                    new[] { "계정코드(대변)", "대변" },
+                    new[] { input.CreditAccountCode },
+                    pressEnter: true,
+                    stepTimeout,
+                    cancellationToken,
+                    preferLowerArea: true));
 
             var beforeLineSaveExpectations = new object[]
             {
@@ -359,6 +402,47 @@ public sealed class ErpAutomationService
             await page.Keyboard.PressAsync("Enter");
             await WaitAfterEnterAsync(page, timeout, cancellationToken);
         }
+    }
+
+    private static async Task FillNearAnyLabelAndVerifyAsync(
+        IPage page,
+        IReadOnlyCollection<string> labels,
+        string value,
+        IReadOnlyCollection<string> verificationLabels,
+        IReadOnlyCollection<string> verificationValues,
+        bool pressEnter,
+        TimeSpan timeout,
+        CancellationToken cancellationToken,
+        bool preferLowerArea = false,
+        bool preferWideControl = false)
+    {
+        await FillNearAnyLabelAndVerifyAsync(
+            page,
+            labels,
+            new[] { value },
+            verificationLabels,
+            verificationValues,
+            pressEnter,
+            timeout,
+            cancellationToken,
+            preferLowerArea,
+            preferWideControl);
+    }
+
+    private static async Task FillNearAnyLabelAndVerifyAsync(
+        IPage page,
+        IReadOnlyCollection<string> labels,
+        IReadOnlyCollection<string> values,
+        IReadOnlyCollection<string> verificationLabels,
+        IReadOnlyCollection<string> verificationValues,
+        bool pressEnter,
+        TimeSpan timeout,
+        CancellationToken cancellationToken,
+        bool preferLowerArea = false,
+        bool preferWideControl = false)
+    {
+        await FillNearAnyLabelAsync(page, labels, values, pressEnter, timeout, cancellationToken, preferLowerArea, preferWideControl);
+        await WaitUntilExpectedValuesNearAnyLabelAsync(page, verificationLabels, verificationValues, timeout, cancellationToken);
     }
 
     private static async Task WaitAfterEnterAsync(IPage page, TimeSpan timeout, CancellationToken cancellationToken)
