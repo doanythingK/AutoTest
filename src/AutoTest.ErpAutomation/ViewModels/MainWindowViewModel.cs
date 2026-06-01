@@ -68,6 +68,10 @@ public partial class MainWindowViewModel : ObservableObject
     private string lastRunLogPath = string.Empty;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OpenLastRunLogCommand))]
+    private string lastRunLogFilePath = string.Empty;
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RunAutomationCommand))]
     [NotifyCanExecuteChangedFor(nameof(CancelAutomationCommand))]
     [NotifyCanExecuteChangedFor(nameof(CheckChromeCommand))]
@@ -192,6 +196,22 @@ public partial class MainWindowViewModel : ObservableObject
         OpenFolder(_runLogService.LogDirectory, "실행 로그 폴더");
     }
 
+    [RelayCommand(CanExecute = nameof(CanOpenLastRunLog))]
+    private void OpenLastRunLog()
+    {
+        try
+        {
+            _folderOpenService.OpenFile(LastRunLogFilePath);
+            AddInfo($"최근 실행 로그 파일을 열었습니다: {LastRunLogFilePath}");
+            StatusMessage = "최근 실행 로그 열기 완료";
+        }
+        catch (Exception ex)
+        {
+            AddError($"최근 실행 로그 열기 실패: {ex.Message}");
+            StatusMessage = "최근 실행 로그 열기 실패";
+        }
+    }
+
     [RelayCommand]
     private void OpenFailureFolder()
     {
@@ -220,6 +240,7 @@ public partial class MainWindowViewModel : ObservableObject
         _automationCancellation?.Dispose();
         _automationCancellation = new CancellationTokenSource();
         _currentRunLogPath = _runLogService.StartRun(input, settings);
+        LastRunLogFilePath = _currentRunLogPath;
         LastRunLogPath = $"로그 파일: {_currentRunLogPath}";
 
         AddInfo($"실행 로그 파일을 생성했습니다: {_currentRunLogPath}");
@@ -324,6 +345,11 @@ public partial class MainWindowViewModel : ObservableObject
     private bool CanCancelAutomation()
     {
         return IsRunning;
+    }
+
+    private bool CanOpenLastRunLog()
+    {
+        return !string.IsNullOrWhiteSpace(LastRunLogFilePath);
     }
 
     private bool CanUseIdleCommands()

@@ -196,6 +196,10 @@
                                         Content="로그 폴더 열기"
                                         Margin="0,0,8,0"
                                         Padding="10,6" />
+                                <Button Command="{Binding OpenLastRunLogCommand}"
+                                        Content="최근 로그 열기"
+                                        Margin="0,0,8,0"
+                                        Padding="10,6" />
                                 <Button Command="{Binding OpenFailureFolderCommand}"
                                         Content="실패 자료 열기"
                                         Padding="10,6" />
