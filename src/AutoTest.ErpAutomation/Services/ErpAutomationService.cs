@@ -322,6 +322,12 @@ public sealed class ErpAutomationService
         await WaitForBusyIndicatorToClearAsync(page, timeout, cancellationToken);
     }
 
+    private static async Task WaitAfterSelectionAsync(IPage page, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        await Task.Delay(300, cancellationToken);
+        await WaitForBusyIndicatorToClearAsync(page, timeout, cancellationToken);
+    }
+
     private static async Task WaitForBusyIndicatorToClearAsync(IPage page, TimeSpan timeout, CancellationToken cancellationToken)
     {
         var settleTimeout = TimeSpan.FromMilliseconds(Math.Min(timeout.TotalMilliseconds, 3000));
@@ -399,6 +405,7 @@ public sealed class ErpAutomationService
                 quickTimeout,
                 cancellationToken))
             {
+                await WaitAfterSelectionAsync(page, timeout, cancellationToken);
                 return;
             }
         }
@@ -413,6 +420,7 @@ public sealed class ErpAutomationService
                 quickTimeout,
                 cancellationToken))
             {
+                await WaitAfterSelectionAsync(page, timeout, cancellationToken);
                 return;
             }
         }
