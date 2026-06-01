@@ -15,8 +15,6 @@ public sealed class ErpAutomationService
         IProgress<AutomationProgress> progress,
         CancellationToken cancellationToken)
     {
-        progress.Report(AutomationProgress.Info("[01/30] Chrome 연결을 확인합니다."));
-
         using var playwright = await Playwright.CreateAsync();
         var browser = await playwright.Chromium.ConnectOverCDPAsync(settings.DebugEndpoint);
         var context = browser.Contexts.FirstOrDefault()

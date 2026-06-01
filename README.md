@@ -28,7 +28,7 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 ## 구현된 자동화 흐름
 
 1. WPF 화면에서 수량, 단가, 거래처코드, 계정코드를 입력한다.
-2. `Chrome 연결 확인`으로 원격 디버깅 포트 연결 상태를 확인한다.
+2. `자동화 실행` 시 원격 디버깅 포트 연결 상태를 먼저 확인한다.
 3. `자동화 실행`을 누르면 ERP 로그인 페이지로 이동한다.
 4. 저장된 계정 정보는 건드리지 않고 로그인 버튼만 클릭한다.
 5. 회계관리, 거래전표, 매출등록, 원화 메뉴로 이동한다.
@@ -56,4 +56,5 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 - 프로그램은 자동화 중 기존 Chrome 탭을 닫지 않는다.
 - 로그인 아이디/비밀번호 입력 필드는 자동화 코드에서 채우지 않는다.
 - 자동화 실행 로그는 `%LOCALAPPDATA%\AutoTest.ErpAutomation\RunLogs`에 저장한다.
+- Chrome 연결 확인에 실패하면 ERP 페이지 이동 전에 자동화를 중단한다.
 - 자동화 실패 시 `%LOCALAPPDATA%\AutoTest.ErpAutomation\Failures`에 화면 PNG와 HTML을 저장한다.

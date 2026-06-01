@@ -180,6 +180,18 @@ public partial class MainWindowViewModel : ObservableObject
 
         try
         {
+            AddInfo("[01/30] Chrome 연결을 확인합니다.");
+            var chromeConnection = await _chromeConnectionService.CheckConnectionAsync(settings, _automationCancellation.Token);
+            ChromeStatus = chromeConnection.Message;
+            if (!chromeConnection.IsConnected)
+            {
+                AddWarning($"[01/30] {chromeConnection.Message}");
+                StatusMessage = "Chrome 연결 필요";
+                return;
+            }
+
+            AddInfo($"[01/30] {chromeConnection.Message}");
+
             var progress = new Progress<AutomationProgress>(OnAutomationProgress);
             await _erpAutomationService.RunAsync(input, settings, progress, _automationCancellation.Token);
             StatusMessage = "자동화 완료";
