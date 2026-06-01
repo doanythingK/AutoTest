@@ -474,7 +474,7 @@ public sealed class ErpAutomationService
         CancellationToken cancellationToken)
     {
         await SelectByAnyLabelAsync(page, labels, optionTexts, timeout, cancellationToken);
-        await WaitUntilAllGroupsAsync(page, new[] { verificationTexts }, timeout, cancellationToken);
+        await WaitUntilExpectedValuesNearAnyLabelAsync(page, labels, verificationTexts, timeout, cancellationToken);
     }
 
     private static async Task SelectByAnyLabelAsync(
@@ -760,6 +760,28 @@ public sealed class ErpAutomationService
         throw new TimeoutException("입력 라벨 주변에서 기대값을 찾지 못했습니다.");
     }
 
+    private static async Task WaitUntilExpectedValuesNearAnyLabelAsync(
+        IPage page,
+        IReadOnlyCollection<string> labels,
+        IReadOnlyCollection<string> values,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        var deadline = DateTime.UtcNow.Add(timeout);
+        while (DateTime.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (await PageHasExpectedValuesNearAnyLabelAsync(page, labels, values, cancellationToken))
+            {
+                return;
+            }
+
+            await Task.Delay(500, cancellationToken);
+        }
+
+        throw new TimeoutException($"'{string.Join("' 또는 '", labels)}' 라벨 주변에서 선택값을 찾지 못했습니다: {string.Join(", ", values)}");
+    }
+
     private static async Task<bool> PageContainsAnyAsync(IPage page, IReadOnlyCollection<string> texts, CancellationToken cancellationToken)
     {
         foreach (var frame in page.Frames)
@@ -877,19 +899,22 @@ public sealed class ErpAutomationService
                             element.innerText,
                             element.textContent,
                             element.title,
-                            element.getAttribute('aria-label')
+                            element.getAttribute('aria-label'),
+                            ...(element.tagName?.toLowerCase() === 'select'
+                                ? Array.from(element.selectedOptions || []).map(option => option.text)
+                                : [])
                         ].filter(Boolean).join(' '));
                         const valuesNearLabel = labelElement => {
                             const values = [];
                             const row = labelElement.closest('tr');
                             if (row) {
-                                values.push(...Array.from(row.querySelectorAll('input:not([type=hidden]), textarea, td, span, div'))
+                                values.push(...Array.from(row.querySelectorAll('input:not([type=hidden]), textarea, select, button, td, span, div, [role=combobox], [aria-haspopup]'))
                                     .filter(element => element !== labelElement && visible(element))
                                     .map(valueOf));
                             }
 
                             const labelRect = labelElement.getBoundingClientRect();
-                            values.push(...Array.from(document.querySelectorAll('input:not([type=hidden]), textarea, td, span, div'))
+                            values.push(...Array.from(document.querySelectorAll('input:not([type=hidden]), textarea, select, button, td, span, div, [role=combobox], [aria-haspopup]'))
                                 .filter(element => element !== labelElement && visible(element))
                                 .map(element => ({ element, rect: element.getBoundingClientRect() }))
                                 .filter(item => Math.abs(item.rect.top - labelRect.top) < 70 && item.rect.left >= labelRect.left)
@@ -920,6 +945,29 @@ public sealed class ErpAutomationService
             catch
             {
                 // Some transient frames can disappear while the ERP screen is changing.
+            }
+        }
+
+        return false;
+    }
+
+    private static async Task<bool> PageHasExpectedValuesNearAnyLabelAsync(
+        IPage page,
+        IReadOnlyCollection<string> labels,
+        IReadOnlyCollection<string> values,
+        CancellationToken cancellationToken)
+    {
+        var expectations = labels
+            .Select(label => new { label, values })
+            .Cast<object>()
+            .ToArray();
+
+        foreach (var expectation in expectations)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (await PageHasExpectedValuesNearLabelsAsync(page, new[] { expectation }, cancellationToken))
+            {
+                return true;
             }
         }
 
