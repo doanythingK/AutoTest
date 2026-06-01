@@ -420,7 +420,7 @@ public sealed class ErpAutomationService
         while (DateTime.UtcNow < deadline)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (await PageHasFilledCredentialFieldAsync(page, cancellationToken))
+            if (await PageHasAnyFilledCredentialFieldAsync(page, cancellationToken))
             {
                 progress.Report(AutomationProgress.Info("저장된 로그인 정보 자동 채움을 확인했습니다."));
                 return;
@@ -429,7 +429,7 @@ public sealed class ErpAutomationService
             await Task.Delay(250, cancellationToken);
         }
 
-        progress.Report(AutomationProgress.Warning("저장된 로그인 정보 자동 채움을 확인하지 못했습니다. 아이디/비밀번호 입력 없이 로그인 버튼만 클릭합니다."));
+        throw new InvalidOperationException("저장된 로그인 정보 자동 채움을 확인하지 못했습니다. 자동화는 아이디/비밀번호를 입력하지 않으므로 Chrome에 저장된 로그인 정보가 자동 입력된 뒤 다시 실행해야 합니다.");
     }
 
     private static Task SelectByLabelAsync(IPage page, string label, string optionText, TimeSpan timeout, CancellationToken cancellationToken)
@@ -801,14 +801,14 @@ public sealed class ErpAutomationService
         return false;
     }
 
-    private static async Task<bool> PageHasFilledCredentialFieldAsync(IPage page, CancellationToken cancellationToken)
+    private static async Task<bool> PageHasAnyFilledCredentialFieldAsync(IPage page, CancellationToken cancellationToken)
     {
         foreach (var frame in page.Frames)
         {
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                if (await frame.EvaluateAsync<bool>(CredentialFieldsScript("controls.length > 0 && controls.every(control => String(control.value || '').trim().length > 0)")))
+                if (await frame.EvaluateAsync<bool>(CredentialFieldsScript("controls.some(control => String(control.value || '').trim().length > 0)")))
                 {
                     return true;
                 }
