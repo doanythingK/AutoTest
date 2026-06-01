@@ -16,7 +16,7 @@ public sealed class ErpAutomationService
         IProgress<AutomationProgress> progress,
         CancellationToken cancellationToken)
     {
-        progress.Report(AutomationProgress.Info("Chrome CDP에 연결합니다."));
+        progress.Report(AutomationProgress.Info("[01/30] Chrome 연결을 확인합니다."));
 
         using var playwright = await Playwright.CreateAsync();
         var browser = await playwright.Chromium.ConnectOverCDPAsync(settings.DebugEndpoint);
@@ -28,105 +28,108 @@ public sealed class ErpAutomationService
 
         try
         {
-        await StepAsync(progress, "ERP 로그인 페이지에 접속합니다.", async () =>
-        {
-            await page.GotoAsync(LoginUrl, new PageGotoOptions
+            await StepAsync(progress, "[02/30] ERP 로그인 페이지에 접속합니다.", async () =>
             {
-                WaitUntil = WaitUntilState.DOMContentLoaded,
-                Timeout = (float)DefaultTimeout.TotalMilliseconds
+                await page.GotoAsync(LoginUrl, new PageGotoOptions
+                {
+                    WaitUntil = WaitUntilState.DOMContentLoaded,
+                    Timeout = (float)DefaultTimeout.TotalMilliseconds
+                });
             });
-        });
 
-        await StepAsync(progress, "로그인 버튼만 클릭합니다. 아이디/비밀번호 입력칸은 건드리지 않습니다.", async () =>
-        {
-            await ClickTextAsync(page, "로그인", cancellationToken);
-        });
+            progress.Report(AutomationProgress.Info("[03/30] 아이디와 비밀번호 입력값은 건드리지 않습니다."));
 
-        await StepAsync(progress, "로그인 성공 여부를 확인합니다.", async () =>
-        {
-            await WaitUntilAnyTextAsync(page, new[] { "회계관리", "로그아웃", "ERP" }, cancellationToken);
-        });
-
-        await StepAsync(progress, "회계관리 버튼을 클릭합니다.", () => ClickTextAsync(page, "회계관리", cancellationToken));
-        await StepAsync(progress, "거래전표 메뉴를 펼칩니다.", () => ClickTextAsync(page, "거래전표", cancellationToken));
-        await StepAsync(progress, "거래전표(매출등록) 메뉴를 펼칩니다.", () => ClickTextAsync(page, "거래전표(매출등록)", cancellationToken));
-        await StepAsync(progress, "원화 버튼을 클릭합니다.", () => ClickTextAsync(page, "원화", cancellationToken));
-
-        await StepAsync(progress, $"거래일자에 {input.TransactionDateText} 값을 입력합니다.", () =>
-            FillNearLabelAsync(page, "거래일자", input.TransactionDateText, pressEnter: false, cancellationToken));
-
-        await StepAsync(progress, "차변에서 외상매출금 [1141]을 선택합니다.", async () =>
-        {
-            await SelectByLabelAsync(page, "차변", "외상매출금", cancellationToken);
-            await ClickTextAsync(page, "외상매출금", cancellationToken);
-        });
-
-        await StepAsync(progress, "매출구분에서 서비스(사회및개인)업 폐차처리업을 선택합니다.", async () =>
-        {
-            await SelectByLabelAsync(page, "매출구분", "서비스(사회및개인)업 폐차처리업", cancellationToken);
-            await ClickTextAsync(page, "서비스(사회및개인)업 폐차처리업", cancellationToken);
-        });
-
-        await StepAsync(progress, $"거래처코드/명에 {input.ClientCode} 값을 입력하고 Enter를 실행합니다.", () =>
-            FillNearLabelAsync(page, "거래처코드/명", input.ClientCode, pressEnter: true, cancellationToken));
-
-        await StepAsync(progress, "담당부서에 20을 입력하고 Enter를 실행합니다.", () =>
-            FillNearLabelAsync(page, "담당부서", "20", pressEnter: true, cancellationToken));
-
-        await StepAsync(progress, "전자(세금)계산서 발송구분에서 국세청HTS를 선택합니다.", async () =>
-        {
-            await SelectByLabelAsync(page, "전자(세금)계산서 발송구분", "국세청HTS", cancellationToken);
-            await ClickTextAsync(page, "국세청HTS", cancellationToken);
-        });
-
-        await StepAsync(progress, $"품목코드/품목명(적요)에 {ItemText}를 입력합니다.", () =>
-            FillNearLabelAsync(page, "품목코드/품목명(적요)", ItemText, pressEnter: false, cancellationToken));
-
-        await StepAsync(progress, $"수량에 {input.QuantityText} 값을 입력합니다.", () =>
-            FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, cancellationToken));
-
-        await StepAsync(progress, $"단가에 {input.UnitPriceText} 값을 입력합니다.", () =>
-            FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, cancellationToken));
-
-        await StepAsync(progress, "계산 버튼을 클릭합니다.", () => ClickTextAsync(page, "계산", cancellationToken));
-
-        await StepAsync(progress, "계산 결과가 정상 반영되었는지 확인합니다.", async () =>
-        {
-            var ok = await PageContainsAnyAsync(page, new[] { input.SupplyAmountText, input.TaxAmountText }, cancellationToken);
-            if (!ok)
+            await StepAsync(progress, "[04/30] 로그인 버튼만 클릭합니다.", async () =>
             {
-                progress.Report(AutomationProgress.Warning("공급가액/세액을 찾지 못했습니다. 수량과 단가를 다시 입력한 뒤 계산을 재시도합니다."));
-                await FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, cancellationToken);
-                await FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, cancellationToken);
-                await ClickTextAsync(page, "계산", cancellationToken);
-            }
+                await ClickTextAsync(page, "로그인", cancellationToken);
+            });
 
-            await WaitUntilAnyTextAsync(page, new[] { input.SupplyAmountText, input.TaxAmountText }, cancellationToken);
-        });
+            await StepAsync(progress, "[05/30] 로그인 성공 여부를 확인합니다.", async () =>
+            {
+                await WaitUntilAnyTextAsync(page, new[] { "회계관리", "로그아웃", "ERP" }, cancellationToken);
+            });
 
-        await StepAsync(progress, $"계정코드(대변)에 {input.CreditAccountCode} 값을 입력하고 Enter를 실행합니다.", () =>
-            FillNearLabelAsync(page, "계정코드(대변)", input.CreditAccountCode, pressEnter: true, cancellationToken));
+            progress.Report(AutomationProgress.Info("[06/30] 로그인된 탭은 닫지 않고 유지합니다."));
 
-        await StepAsync(progress, "라인저장 전 입력값과 계산 결과를 확인합니다.", async () =>
-        {
-            await WaitUntilAnyTextAsync(page, new[] { ItemText, input.SupplyAmountText, input.TaxAmountText }, cancellationToken);
-        });
+            await StepAsync(progress, "[07/30] 회계관리 버튼을 클릭합니다.", () => ClickTextAsync(page, "회계관리", cancellationToken));
+            await StepAsync(progress, "[08/30] 거래전표 메뉴를 펼칩니다.", () => ClickTextAsync(page, "거래전표", cancellationToken));
+            await StepAsync(progress, "[09/30] 거래전표(매출등록) 메뉴를 펼칩니다.", () => ClickTextAsync(page, "거래전표(매출등록)", cancellationToken));
+            await StepAsync(progress, "[10/30] 원화 버튼을 클릭합니다.", () => ClickTextAsync(page, "원화", cancellationToken));
 
-        await StepAsync(progress, "라인저장(L) 버튼을 클릭합니다.", () => ClickTextAsync(page, "라인저장", cancellationToken));
+            await StepAsync(progress, $"[11/30] 거래일자에 {input.TransactionDateText} 값을 입력합니다.", () =>
+                FillNearLabelAsync(page, "거래일자", input.TransactionDateText, pressEnter: false, cancellationToken));
 
-        await StepAsync(progress, "라인 목록 반영 여부를 확인합니다.", async () =>
-        {
-            await WaitUntilAnyTextAsync(page, new[] { ItemText, input.QuantityText, input.UnitPriceText, input.SupplyAmountText, input.TaxAmountText }, cancellationToken);
-        });
+            await StepAsync(progress, "[12/30] 차변에서 외상매출금 [1141]을 선택합니다.", async () =>
+            {
+                await SelectByLabelAsync(page, "차변", "외상매출금", cancellationToken);
+                await ClickTextAsync(page, "외상매출금", cancellationToken);
+            });
 
-        await StepAsync(progress, "거래전기[S] 버튼을 클릭합니다.", () => ClickTextAsync(page, "거래전기", cancellationToken));
-        await StepAsync(progress, "전기 완료 상태를 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "전기 완료", "전기완료", "완료" }, cancellationToken));
-        await StepAsync(progress, "회계전표 동일자생성 버튼을 클릭합니다.", () => ClickTextAsync(page, "회계전표 동일자생성", cancellationToken));
-        await StepAsync(progress, "회계전표입력 화면 이동을 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "회계전표입력", "회계전표 입력" }, cancellationToken));
-        await StepAsync(progress, "원장전기[P] 버튼을 클릭합니다.", () => ClickTextAsync(page, "원장전기", cancellationToken));
-        await StepAsync(progress, "원장전기 완료 상태를 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "원장전기: 완료", "원장전기 완료", "완료" }, cancellationToken));
+            await StepAsync(progress, "[13/30] 매출구분에서 서비스(사회및개인)업 폐차처리업을 선택합니다.", async () =>
+            {
+                await SelectByLabelAsync(page, "매출구분", "서비스(사회및개인)업 폐차처리업", cancellationToken);
+                await ClickTextAsync(page, "서비스(사회및개인)업 폐차처리업", cancellationToken);
+            });
 
-        progress.Report(AutomationProgress.Info("ERP 매출등록 자동화 절차가 완료되었습니다."));
+            await StepAsync(progress, $"[14/30] 거래처코드/명에 {input.ClientCode} 값을 입력하고 Enter를 실행합니다.", () =>
+                FillNearLabelAsync(page, "거래처코드/명", input.ClientCode, pressEnter: true, cancellationToken));
+
+            await StepAsync(progress, "[15/30] 담당부서에 20을 입력하고 Enter를 실행합니다.", () =>
+                FillNearLabelAsync(page, "담당부서", "20", pressEnter: true, cancellationToken));
+
+            await StepAsync(progress, "[16/30] 전자(세금)계산서 발송구분에서 국세청HTS를 선택합니다.", async () =>
+            {
+                await SelectByLabelAsync(page, "전자(세금)계산서 발송구분", "국세청HTS", cancellationToken);
+                await ClickTextAsync(page, "국세청HTS", cancellationToken);
+            });
+
+            await StepAsync(progress, $"[17/30] 품목코드/품목명(적요)에 {ItemText}를 입력합니다.", () =>
+                FillNearLabelAsync(page, "품목코드/품목명(적요)", ItemText, pressEnter: false, cancellationToken));
+
+            await StepAsync(progress, $"[18/30] 수량에 {input.QuantityText} 값을 입력합니다.", () =>
+                FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, cancellationToken));
+
+            await StepAsync(progress, $"[19/30] 단가에 {input.UnitPriceText} 값을 입력합니다.", () =>
+                FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, cancellationToken));
+
+            await StepAsync(progress, "[20/30] 계산 버튼을 클릭합니다.", () => ClickTextAsync(page, "계산", cancellationToken));
+
+            await StepAsync(progress, "[21/30] 계산 결과가 정상 반영되었는지 확인합니다.", async () =>
+            {
+                var ok = await PageContainsAnyAsync(page, new[] { input.SupplyAmountText, input.TaxAmountText }, cancellationToken);
+                if (!ok)
+                {
+                    progress.Report(AutomationProgress.Warning("공급가액/세액을 찾지 못했습니다. 수량과 단가를 다시 입력한 뒤 계산을 재시도합니다."));
+                    await FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, cancellationToken);
+                    await FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, cancellationToken);
+                    await ClickTextAsync(page, "계산", cancellationToken);
+                }
+
+                await WaitUntilAnyTextAsync(page, new[] { input.SupplyAmountText, input.TaxAmountText }, cancellationToken);
+            });
+
+            await StepAsync(progress, $"[22/30] 계정코드(대변)에 {input.CreditAccountCode} 값을 입력하고 Enter를 실행합니다.", () =>
+                FillNearLabelAsync(page, "계정코드(대변)", input.CreditAccountCode, pressEnter: true, cancellationToken));
+
+            await StepAsync(progress, "[23/30] 라인저장 전 입력값과 계산 결과를 확인한 뒤 라인저장(L) 버튼을 클릭합니다.", async () =>
+            {
+                await WaitUntilAnyTextAsync(page, new[] { ItemText, input.SupplyAmountText, input.TaxAmountText }, cancellationToken);
+                await ClickTextAsync(page, "라인저장", cancellationToken);
+            });
+
+            await StepAsync(progress, "[24/30] 라인 목록 반영 여부를 확인합니다.", async () =>
+            {
+                await WaitUntilAnyTextAsync(page, new[] { ItemText, input.QuantityText, input.UnitPriceText, input.SupplyAmountText, input.TaxAmountText }, cancellationToken);
+            });
+
+            await StepAsync(progress, "[25/30] 거래전기[S] 버튼을 클릭합니다.", () => ClickTextAsync(page, "거래전기", cancellationToken));
+            await StepAsync(progress, "[26/30] 화면이 전기 완료 상태로 바뀌었는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "전기 완료", "전기완료", "완료" }, cancellationToken));
+            await StepAsync(progress, "[27/30] 회계전표 동일자생성 버튼을 클릭합니다.", () => ClickTextAsync(page, "회계전표 동일자생성", cancellationToken));
+            await StepAsync(progress, "[28/30] 회계전표입력 화면으로 이동했는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "회계전표입력", "회계전표 입력" }, cancellationToken));
+            await StepAsync(progress, "[29/30] 원장전기[P] 버튼을 클릭합니다.", () => ClickTextAsync(page, "원장전기", cancellationToken));
+            await StepAsync(progress, "[30/30] 원장전기 완료 상태가 표시되는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "원장전기: 완료", "원장전기 완료", "완료" }, cancellationToken));
+
+            progress.Report(AutomationProgress.Info("ERP 매출등록 자동화 절차가 완료되었습니다."));
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
