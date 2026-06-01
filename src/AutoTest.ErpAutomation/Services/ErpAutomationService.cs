@@ -448,18 +448,39 @@ public sealed class ErpAutomationService
         return frame.EvaluateAsync<bool>(
             @"(text) => {
                 const normalize = value => (value || '').replace(/\s+/g, ' ').trim();
+                const targetText = normalize(text);
                 const visible = element => {
                     const style = window.getComputedStyle(element);
                     const rect = element.getBoundingClientRect();
                     return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
                 };
+                const textOf = element => normalize(element.innerText || element.value || element.title || element.getAttribute('aria-label'));
+                const isActionElement = element => {
+                    const tag = element.tagName.toLowerCase();
+                    const role = normalize(element.getAttribute('role')).toLowerCase();
+                    return tag === 'button'
+                        || tag === 'a'
+                        || tag === 'input'
+                        || role === 'button'
+                        || role === 'menuitem'
+                        || typeof element.onclick === 'function';
+                };
+                const score = item => {
+                    let value = 0;
+                    if (item.value === targetText) value -= 1000;
+                    if (isActionElement(item.element)) value -= 300;
+                    value += Math.min(item.value.length, 300);
+                    value += Math.min(item.rect.width * item.rect.height / 1000, 300);
+                    return value;
+                };
                 const candidates = Array.from(document.querySelectorAll('button, a, input, div, span, td, li'));
-                const found = candidates.find(element => {
-                    if (!visible(element)) return false;
-                    const value = normalize(element.innerText || element.value || element.title || element.getAttribute('aria-label'));
-                    return value === text || value.includes(text);
-                });
-                if (!found) return false;
+                const matched = candidates
+                    .filter(visible)
+                    .map(element => ({ element, value: textOf(element), rect: element.getBoundingClientRect() }))
+                    .filter(item => item.value === targetText || item.value.includes(targetText))
+                    .sort((a, b) => score(a) - score(b));
+                if (matched.length === 0) return false;
+                const found = matched[0].element;
                 found.scrollIntoView({ block: 'center', inline: 'center' });
                 const rect = found.getBoundingClientRect();
                 const x = rect.left + rect.width / 2;
