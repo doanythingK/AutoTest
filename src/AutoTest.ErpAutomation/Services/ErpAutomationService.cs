@@ -393,9 +393,16 @@ public sealed class ErpAutomationService
                             '.jqgrow',
                             '.ui-row-ltr'
                         ];
+                        const rowText = row => {
+                            const values = [row.innerText, row.textContent, row.getAttribute('title'), row.getAttribute('aria-label')];
+                            row.querySelectorAll('input:not([type=hidden]), textarea, [title], [aria-label]').forEach(element => {
+                                values.push(element.value, element.innerText, element.textContent, element.getAttribute('title'), element.getAttribute('aria-label'));
+                            });
+                            return normalize(values.filter(Boolean).join(' '));
+                        };
                         const rows = Array.from(document.querySelectorAll(rowSelectors.join(',')))
                             .filter(visible)
-                            .map(element => normalize(element.innerText || element.textContent))
+                            .map(rowText)
                             .filter(text => text.length > 0);
                         return rows.some(rowText => groups.every(group => group.some(text => rowText.includes(normalize(text)))));
                     }",
