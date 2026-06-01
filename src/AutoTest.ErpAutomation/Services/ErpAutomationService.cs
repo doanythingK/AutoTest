@@ -81,7 +81,7 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[13/30] 매출구분에서 서비스(사회및개인)업 폐차처리업을 선택합니다.", async () =>
             {
-                await SelectByLabelAsync(page, "매출구분", "서비스(사회및개인)업 폐차처리업", stepTimeout, cancellationToken);
+                await SelectByLabelAsync(page, "매출구분", new[] { "서비스(사회및개인)업 폐차처리업", "폐차처리업" }, stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, $"[14/30] 거래처코드/명에 {input.ClientCode} 값을 입력하고 Enter를 실행합니다.", () =>
@@ -92,7 +92,7 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[16/30] 전자(세금)계산서 발송구분에서 국세청HTS를 선택합니다.", async () =>
             {
-                await SelectByLabelAsync(page, "전자(세금)계산서 발송구분", "국세청HTS", stepTimeout, cancellationToken);
+                await SelectByLabelAsync(page, "전자(세금)계산서 발송구분", new[] { "국세청HTS", "국세청" }, stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, $"[17/30] 품목코드/품목명(적요)에 {AutomationInput.ItemText}를 입력합니다.", () =>
@@ -919,7 +919,10 @@ public sealed class ErpAutomationService
                     return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
                 };
                 const textOf = element => normalize(element.innerText || element.value || element.title || element.getAttribute('aria-label'));
-                const matchesText = item => item.value === targetText || item.value.includes(targetText) || item.key.includes(targetKey);
+                const matchesText = item => item.value === targetText
+                    || item.value.includes(targetText)
+                    || item.key.includes(targetKey)
+                    || (targetKey.includes(item.key) && item.key.length >= Math.min(4, targetKey.length));
                 const isActionElement = element => {
                     const tag = element.tagName.toLowerCase();
                     const role = normalize(element.getAttribute('role')).toLowerCase();
@@ -1132,7 +1135,10 @@ public sealed class ErpAutomationService
                 const matchesOption = item => {
                     const textKey = normalizeOption(item.text);
                     const valueKey = normalizeOption(item.value);
-                    return textKey.includes(optionKey) || valueKey.includes(optionKey);
+                    return textKey.includes(optionKey)
+                        || valueKey.includes(optionKey)
+                        || (optionKey.includes(textKey) && textKey.length >= Math.min(4, optionKey.length))
+                        || (optionKey.includes(valueKey) && valueKey.length >= Math.min(4, optionKey.length));
                 };
                 const visible = element => {
                     const style = window.getComputedStyle(element);
