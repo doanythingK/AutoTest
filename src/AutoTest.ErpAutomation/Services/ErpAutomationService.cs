@@ -203,7 +203,7 @@ public sealed class ErpAutomationService
     {
         return RunInAnyFrameAsync(
             page,
-            frame => ClickTextInFrameAsync(frame, text, preferUpperArea, preferLowerArea),
+            frame => ClickTextInFrameAsync(page, frame, text, preferUpperArea, preferLowerArea),
             $"'{text}' 클릭",
             timeout,
             cancellationToken);
@@ -277,7 +277,7 @@ public sealed class ErpAutomationService
         {
             if (await TryRunInAnyFrameAsync(
                 page,
-                frame => ClickTextInFrameAsync(frame, optionText),
+                frame => ClickTextInFrameAsync(page, frame, optionText),
                 quickTimeout,
                 cancellationToken))
             {
@@ -640,9 +640,9 @@ public sealed class ErpAutomationService
         return false;
     }
 
-    private static Task<bool> ClickTextInFrameAsync(IFrame frame, string text, bool preferUpperArea, bool preferLowerArea)
+    private static async Task<bool> ClickTextInFrameAsync(IPage page, IFrame frame, string text, bool preferUpperArea, bool preferLowerArea)
     {
-        return frame.EvaluateAsync<bool>(
+        var clickTarget = await frame.EvaluateAsync<ClickTargetResult>(
             @"({ text, preferUpperArea, preferLowerArea }) => {
                 const normalize = value => (value || '').replace(/\s+/g, ' ').trim();
                 const normalizeKey = value => normalize(value).replace(/[\s()[\]{}<>\/\\:_-]/g, '');
@@ -685,25 +685,64 @@ public sealed class ErpAutomationService
                     })
                     .filter(matchesText)
                     .sort((a, b) => score(a) - score(b));
-                if (matched.length === 0) return false;
+                if (matched.length === 0) return { Found: false, X: 0, Y: 0, CanMouseClick: false };
                 const found = matched[0].element;
                 found.scrollIntoView({ block: 'center', inline: 'center' });
                 const rect = found.getBoundingClientRect();
                 const x = rect.left + rect.width / 2;
                 const y = rect.top + rect.height / 2;
-                const target = document.elementFromPoint(x, y) || found;
-                const eventOptions = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
-                target.dispatchEvent(new PointerEvent('pointerdown', eventOptions));
-                target.dispatchEvent(new MouseEvent('mousedown', eventOptions));
-                target.dispatchEvent(new PointerEvent('pointerup', eventOptions));
-                target.dispatchEvent(new MouseEvent('mouseup', eventOptions));
-                target.dispatchEvent(new MouseEvent('click', eventOptions));
-                if (target !== found) {
-                    found.click();
+                let pageX = x;
+                let pageY = y;
+                let canMouseClick = true;
+                try {
+                    let currentWindow = window;
+                    while (currentWindow.frameElement) {
+                        const frameRect = currentWindow.frameElement.getBoundingClientRect();
+                        pageX += frameRect.left;
+                        pageY += frameRect.top;
+                        currentWindow = currentWindow.parent;
+                    }
+                } catch {
+                    canMouseClick = window === window.top;
                 }
-                return true;
+                if (!canMouseClick) {
+                    const target = document.elementFromPoint(x, y) || found;
+                    const eventOptions = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
+                    target.dispatchEvent(new PointerEvent('pointerdown', eventOptions));
+                    target.dispatchEvent(new MouseEvent('mousedown', eventOptions));
+                    target.dispatchEvent(new PointerEvent('pointerup', eventOptions));
+                    target.dispatchEvent(new MouseEvent('mouseup', eventOptions));
+                    target.dispatchEvent(new MouseEvent('click', eventOptions));
+                    if (target !== found) {
+                        found.click();
+                    }
+                }
+                return { Found: true, X: pageX, Y: pageY, CanMouseClick: canMouseClick };
             }",
             new { text, preferUpperArea, preferLowerArea });
+
+        if (clickTarget is null || !clickTarget.Found)
+        {
+            return false;
+        }
+
+        if (clickTarget.CanMouseClick)
+        {
+            await page.Mouse.ClickAsync((float)clickTarget.X, (float)clickTarget.Y);
+        }
+
+        return true;
+    }
+
+    private sealed class ClickTargetResult
+    {
+        public bool Found { get; set; }
+
+        public double X { get; set; }
+
+        public double Y { get; set; }
+
+        public bool CanMouseClick { get; set; }
     }
 
     private static Task<bool> FillNearLabelInFrameAsync(
