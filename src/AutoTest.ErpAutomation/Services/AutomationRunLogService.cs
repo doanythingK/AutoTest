@@ -26,6 +26,10 @@ public sealed class AutomationRunLogService
         builder.AppendLine($"계정코드: {input.CreditAccountCode}");
         builder.AppendLine($"예상 공급가액: {input.SupplyAmountText}");
         builder.AppendLine($"예상 세액: {input.TaxAmountText}");
+        builder.AppendLine($"실행 PC: {Environment.MachineName}");
+        builder.AppendLine($"실행 사용자: {Environment.UserName}");
+        builder.AppendLine($"Chrome 경로: {FormatOptional(settings.ChromePath)}");
+        builder.AppendLine($"Chrome 원격 디버깅 포트: {settings.RemoteDebuggingPort}");
         builder.AppendLine($"Chrome 디버깅 주소: {settings.DebugEndpoint}");
         builder.AppendLine($"Chrome 프로필: {settings.ChromeProfileDirectory}");
         builder.AppendLine($"단계 대기 시간: {settings.StepTimeoutSeconds}초");
@@ -45,5 +49,12 @@ public sealed class AutomationRunLogService
         File.AppendAllText(
             path,
             $"{entry.Time:yyyy-MM-dd HH:mm:ss}\t{entry.Level}\t{entry.Message}{Environment.NewLine}");
+    }
+
+    private static string FormatOptional(string value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? "(자동 탐색)"
+            : value;
     }
 }

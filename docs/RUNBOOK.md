@@ -74,7 +74,7 @@ WPF의 `로그 폴더 열기` 버튼을 누르면 실행 로그 폴더가 열린
 %LOCALAPPDATA%\AutoTest.ErpAutomation\RunLogs
 ```
 
-실행 로그에는 입력값, 예상 공급가액/세액, Chrome 설정, 단계별 로그가 저장된다.
+실행 로그에는 입력값, 예상 공급가액/세액, 실행 PC/사용자, Chrome 설정, 단계별 로그가 저장된다.
 
 ## 실패 자료 확인
 
