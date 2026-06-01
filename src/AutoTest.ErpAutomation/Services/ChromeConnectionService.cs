@@ -39,6 +39,10 @@ public sealed class ChromeConnectionService
                 ? ChromeConnectionResult.Fail("Chrome은 응답했지만 webSocketDebuggerUrl이 없습니다.")
                 : ChromeConnectionResult.Success(browser, webSocketUrl);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
         {
             return ChromeConnectionResult.Fail($"Chrome 원격 디버깅 포트({settings.RemoteDebuggingPort})에 연결할 수 없습니다.");
