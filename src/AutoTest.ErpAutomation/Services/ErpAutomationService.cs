@@ -30,7 +30,8 @@ public sealed class ErpAutomationService
 
         var page = await GetOrCreatePageAsync(context);
         page.SetDefaultTimeout((float)stepTimeout.TotalMilliseconds);
-        var dialogHandler = AttachDialogHandler(page, progress);
+        var dialogHandlers = new List<(IPage Page, EventHandler<IDialog> Handler)>();
+        AttachDialogHandler(page, progress, dialogHandlers);
 
         try
         {
@@ -134,7 +135,13 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[25/30] 거래전기[S] 버튼을 클릭합니다.", () => ClickTextAsync(page, "거래전기", stepTimeout, cancellationToken, preferUpperArea: true));
             await StepAsync(progress, "[26/30] 화면이 전기 완료 상태로 바뀌었는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "전기 완료", "전기완료", "거래전기 완료", "거래전기: 완료" }, stepTimeout, cancellationToken));
-            await StepAsync(progress, "[27/30] 회계전표 동일자생성 버튼을 클릭합니다.", () => ClickTextAsync(page, "회계전표 동일자생성", stepTimeout, cancellationToken, preferUpperArea: true));
+            await StepAsync(progress, "[27/30] 회계전표 동일자생성 버튼을 클릭합니다.", async () =>
+            {
+                await ClickTextAsync(page, "회계전표 동일자생성", stepTimeout, cancellationToken, preferUpperArea: true);
+                page = await RefreshActivePageAsync(context, page, new[] { "회계전표입력", "회계전표 입력" }, stepTimeout, progress, cancellationToken);
+                page.SetDefaultTimeout((float)stepTimeout.TotalMilliseconds);
+                AttachDialogHandler(page, progress, dialogHandlers);
+            });
             await StepAsync(progress, "[28/30] 회계전표입력 화면으로 이동했는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "회계전표입력", "회계전표 입력" }, stepTimeout, cancellationToken));
             await StepAsync(progress, "[29/30] 원장전기[P] 버튼을 클릭합니다.", () => ClickTextAsync(page, "원장전기", stepTimeout, cancellationToken, preferUpperArea: true));
             await StepAsync(progress, "[30/30] 원장전기 완료 상태가 표시되는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "원장전기: 완료", "원장전기 완료" }, stepTimeout, cancellationToken));
@@ -148,7 +155,10 @@ public sealed class ErpAutomationService
         }
         finally
         {
-            page.Dialog -= dialogHandler;
+            foreach (var (handlerPage, handler) in dialogHandlers)
+            {
+                handlerPage.Dialog -= handler;
+            }
         }
     }
 
@@ -160,8 +170,16 @@ public sealed class ErpAutomationService
         return page;
     }
 
-    private static EventHandler<IDialog> AttachDialogHandler(IPage page, IProgress<AutomationProgress> progress)
+    private static void AttachDialogHandler(
+        IPage page,
+        IProgress<AutomationProgress> progress,
+        ICollection<(IPage Page, EventHandler<IDialog> Handler)> dialogHandlers)
     {
+        if (dialogHandlers.Any(item => ReferenceEquals(item.Page, page)))
+        {
+            return;
+        }
+
         async void Handler(object? _, IDialog dialog)
         {
             progress.Report(AutomationProgress.Info($"브라우저 대화상자 자동 확인: {dialog.Type} - {dialog.Message}"));
@@ -176,7 +194,7 @@ public sealed class ErpAutomationService
         }
 
         page.Dialog += Handler;
-        return Handler;
+        dialogHandlers.Add((page, Handler));
     }
 
     private static async Task StepAsync(IProgress<AutomationProgress> progress, string message, Func<Task> action)
@@ -321,6 +339,53 @@ public sealed class ErpAutomationService
         }
 
         throw new TimeoutException($"화면에서 다음 텍스트를 찾지 못했습니다: {string.Join(", ", texts)}");
+    }
+
+    private static async Task<IPage> RefreshActivePageAsync(
+        IBrowserContext context,
+        IPage currentPage,
+        IReadOnlyCollection<string> expectedTexts,
+        TimeSpan timeout,
+        IProgress<AutomationProgress> progress,
+        CancellationToken cancellationToken)
+    {
+        var deadline = DateTime.UtcNow.Add(timeout);
+        var fallbackPage = currentPage;
+
+        while (DateTime.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var pages = context.Pages.Where(candidate => !candidate.IsClosed).ToArray();
+            foreach (var candidate in pages.Reverse())
+            {
+                if (await PageContainsAnyAsync(candidate, expectedTexts, cancellationToken))
+                {
+                    await candidate.BringToFrontAsync();
+                    if (!ReferenceEquals(candidate, currentPage))
+                    {
+                        progress.Report(AutomationProgress.Info("회계전표입력 화면이 열린 탭으로 전환했습니다."));
+                    }
+
+                    return candidate;
+                }
+            }
+
+            var newestPage = pages.LastOrDefault();
+            if (newestPage is not null && !ReferenceEquals(newestPage, currentPage))
+            {
+                fallbackPage = newestPage;
+            }
+
+            await Task.Delay(350, cancellationToken);
+        }
+
+        if (!ReferenceEquals(fallbackPage, currentPage))
+        {
+            await fallbackPage.BringToFrontAsync();
+            progress.Report(AutomationProgress.Info("새로 열린 탭으로 전환한 뒤 회계전표입력 화면 확인을 계속합니다."));
+        }
+
+        return fallbackPage;
     }
 
     private static async Task WaitUntilLoginSuccessAsync(IPage page, TimeSpan timeout, CancellationToken cancellationToken)
