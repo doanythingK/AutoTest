@@ -82,12 +82,24 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[12/30] 차변에서 외상매출금 [1141]을 선택합니다.", async () =>
             {
-                await SelectByAnyLabelAsync(page, new[] { "차변", "차변계정", "차변 계정" }, new[] { "외상매출금 [1141]", "외상매출금" }, stepTimeout, cancellationToken);
+                await SelectByAnyLabelAndVerifyAsync(
+                    page,
+                    new[] { "차변", "차변계정", "차변 계정" },
+                    new[] { "외상매출금 [1141]", "외상매출금" },
+                    new[] { "외상매출금 [1141]", "외상매출금", "1141" },
+                    stepTimeout,
+                    cancellationToken);
             });
 
             await StepAsync(progress, "[13/30] 매출구분에서 서비스(사회및개인)업 폐차처리업을 선택합니다.", async () =>
             {
-                await SelectByAnyLabelAsync(page, new[] { "매출구분", "매출 구분", "구분" }, new[] { "서비스(사회및개인)업 폐차처리업", "폐차처리업" }, stepTimeout, cancellationToken);
+                await SelectByAnyLabelAndVerifyAsync(
+                    page,
+                    new[] { "매출구분", "매출 구분", "구분" },
+                    new[] { "서비스(사회및개인)업 폐차처리업", "폐차처리업" },
+                    new[] { "서비스(사회및개인)업 폐차처리업", "폐차처리업" },
+                    stepTimeout,
+                    cancellationToken);
             });
 
             await StepAsync(progress, $"[14/30] 거래처코드/명에 {input.ClientCode} 값을 입력하고 Enter를 실행합니다.", () =>
@@ -98,7 +110,13 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[16/30] 전자(세금)계산서 발송구분에서 국세청HTS를 선택합니다.", async () =>
             {
-                await SelectByAnyLabelAsync(page, new[] { "전자(세금)계산서 발송구분", "전자세금계산서 발송구분", "발송구분" }, new[] { "국세청HTS", "국세청" }, stepTimeout, cancellationToken);
+                await SelectByAnyLabelAndVerifyAsync(
+                    page,
+                    new[] { "전자(세금)계산서 발송구분", "전자세금계산서 발송구분", "발송구분" },
+                    new[] { "국세청HTS", "국세청" },
+                    new[] { "국세청HTS", "국세청", "HTS" },
+                    stepTimeout,
+                    cancellationToken);
             });
 
             await StepAsync(progress, $"[17/30] 품목코드/품목명(적요)에 {AutomationInput.ItemText}를 입력합니다.", () =>
@@ -445,6 +463,18 @@ public sealed class ErpAutomationService
         CancellationToken cancellationToken)
     {
         await SelectByAnyLabelAsync(page, new[] { label }, optionTexts, timeout, cancellationToken);
+    }
+
+    private static async Task SelectByAnyLabelAndVerifyAsync(
+        IPage page,
+        IReadOnlyCollection<string> labels,
+        IReadOnlyCollection<string> optionTexts,
+        IReadOnlyCollection<string> verificationTexts,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        await SelectByAnyLabelAsync(page, labels, optionTexts, timeout, cancellationToken);
+        await WaitUntilAllGroupsAsync(page, new[] { verificationTexts }, timeout, cancellationToken);
     }
 
     private static async Task SelectByAnyLabelAsync(
