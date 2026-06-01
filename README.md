@@ -78,7 +78,7 @@ WPF 화면의 `로그 폴더 열기`, `실패 자료 열기` 버튼으로 실행
 - 거래전기/원장전기는 `완료` 단독 문구가 아니라 전기 동작명이 포함된 완료 문구로 확인한다.
 - ERP 응답이 느린 환경에서는 `Chrome 연결 설정`의 단계 대기 시간 값을 늘릴 수 있다.
 - 계산 후 공급가액/세액 주변 값이 `0`으로 감지되면 수량과 단가를 다시 입력하고 계산을 재시도한다.
-- 자동화 실패 시 `%LOCALAPPDATA%\AutoTest.ErpAutomation\Failures`에 화면 PNG와 전체 프레임 HTML을 저장한다.
+- 자동화 실패 시 `%LOCALAPPDATA%\AutoTest.ErpAutomation\Failures`에 화면 PNG와 전체 프레임 HTML을 저장하고, 실패 당시 탭 제목과 URL을 로그에 남긴다.
 
 ## 저장소 관리
 

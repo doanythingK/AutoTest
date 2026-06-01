@@ -1221,6 +1221,10 @@ public sealed class ErpAutomationService
             var screenshotPath = Path.Combine(FailureDirectory, $"erp_failure_{timestamp}.png");
             var htmlPath = Path.Combine(FailureDirectory, $"erp_failure_{timestamp}.html");
 
+            var title = await GetPageTitleAsync(page);
+            progress.Report(AutomationProgress.Warning($"실패 당시 페이지: {title}"));
+            progress.Report(AutomationProgress.Warning($"실패 당시 URL: {page.Url}"));
+
             try
             {
                 await page.ScreenshotAsync(new PageScreenshotOptions
@@ -1253,6 +1257,21 @@ public sealed class ErpAutomationService
         }
     }
 
+    private static async Task<string> GetPageTitleAsync(IPage page)
+    {
+        try
+        {
+            var title = await page.TitleAsync();
+            return string.IsNullOrWhiteSpace(title)
+                ? "(제목 없음)"
+                : title;
+        }
+        catch (Exception ex)
+        {
+            return $"(제목 확인 실패: {ex.Message})";
+        }
+    }
+
     private static async Task<string> BuildFailureHtmlAsync(IPage page)
     {
         var builder = new StringBuilder();
@@ -1260,6 +1279,8 @@ public sealed class ErpAutomationService
         builder.AppendLine("<html><head><meta charset=\"utf-8\"><title>ERP automation failure frames</title></head><body>");
         builder.AppendLine("<h1>ERP automation failure frames</h1>");
         builder.AppendLine($"<p>Captured at {WebUtility.HtmlEncode(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))}</p>");
+        builder.AppendLine($"<p>Page title: {WebUtility.HtmlEncode(await GetPageTitleAsync(page))}</p>");
+        builder.AppendLine($"<p>Page URL: {WebUtility.HtmlEncode(page.Url)}</p>");
 
         var index = 1;
         foreach (var frame in page.Frames)
