@@ -131,7 +131,15 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[23/30] 라인저장 전 입력값과 계산 결과를 확인한 뒤 라인저장(L) 버튼을 클릭합니다.", async () =>
             {
-                await WaitUntilAllGroupsAsync(page, input.BeforeLineSaveGroups, stepTimeout, cancellationToken);
+                var beforeLineSaveExpectations = new object[]
+                {
+                    new { label = "수량", values = input.QuantityCandidates },
+                    new { label = "단가", values = input.UnitPriceCandidates },
+                    new { label = "공급가액", values = input.SupplyAmountCandidates },
+                    new { label = "세액", values = input.TaxAmountCandidates }
+                };
+                await WaitUntilAnyTextAsync(page, new[] { AutomationInput.ItemText }, stepTimeout, cancellationToken);
+                await WaitUntilExpectedValuesNearLabelsAsync(page, beforeLineSaveExpectations, stepTimeout, cancellationToken);
                 await ClickTextAsync(page, "라인저장", stepTimeout, cancellationToken, preferLowerArea: true);
             });
 
@@ -511,7 +519,7 @@ public sealed class ErpAutomationService
             await Task.Delay(500, cancellationToken);
         }
 
-        throw new TimeoutException("공급가액/세액 라벨 주변에서 기대 계산 결과를 찾지 못했습니다.");
+        throw new TimeoutException("입력 라벨 주변에서 기대값을 찾지 못했습니다.");
     }
 
     private static async Task<bool> PageContainsAnyAsync(IPage page, IReadOnlyCollection<string> texts, CancellationToken cancellationToken)
