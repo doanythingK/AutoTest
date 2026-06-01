@@ -153,7 +153,8 @@ public sealed class ErpAutomationService
             });
 
             await StepAsync(progress, "[25/30] 거래전기[S] 버튼을 클릭합니다.", () => ClickTextAsync(page, "거래전기", stepTimeout, cancellationToken, preferUpperArea: true));
-            await StepAsync(progress, "[26/30] 화면이 전기 완료 상태로 바뀌었는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "전기 완료", "전기완료", "거래전기 완료", "거래전기: 완료" }, stepTimeout, cancellationToken));
+            await StepAsync(progress, "[26/30] 화면이 전기 완료 상태로 바뀌었는지 확인합니다.", () =>
+                WaitUntilAnyTextOrRetryClickAsync(page, new[] { "전기 완료", "전기완료", "거래전기 완료", "거래전기: 완료" }, "거래전기", stepTimeout, progress, cancellationToken, preferUpperArea: true));
             await StepAsync(progress, "[27/30] 회계전표 동일자생성 버튼을 클릭합니다.", async () =>
             {
                 await ClickTextAsync(page, "회계전표 동일자생성", stepTimeout, cancellationToken, preferUpperArea: true);
@@ -163,7 +164,8 @@ public sealed class ErpAutomationService
             });
             await StepAsync(progress, "[28/30] 회계전표입력 화면으로 이동했는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "회계전표입력", "회계전표 입력" }, stepTimeout, cancellationToken));
             await StepAsync(progress, "[29/30] 원장전기[P] 버튼을 클릭합니다.", () => ClickTextAsync(page, "원장전기", stepTimeout, cancellationToken, preferUpperArea: true));
-            await StepAsync(progress, "[30/30] 원장전기 완료 상태가 표시되는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "원장전기: 완료", "원장전기 완료" }, stepTimeout, cancellationToken));
+            await StepAsync(progress, "[30/30] 원장전기 완료 상태가 표시되는지 확인합니다.", () =>
+                WaitUntilAnyTextOrRetryClickAsync(page, new[] { "원장전기: 완료", "원장전기 완료" }, "원장전기", stepTimeout, progress, cancellationToken, preferUpperArea: true));
 
             progress.Report(AutomationProgress.Info("ERP 매출등록 자동화 절차가 완료되었습니다."));
         }
@@ -459,19 +461,50 @@ public sealed class ErpAutomationService
 
     private static async Task WaitUntilAnyTextAsync(IPage page, IReadOnlyCollection<string> texts, TimeSpan timeout, CancellationToken cancellationToken)
     {
+        if (await TryWaitUntilAnyTextAsync(page, texts, timeout, cancellationToken))
+        {
+            return;
+        }
+
+        throw new TimeoutException($"화면에서 다음 텍스트를 찾지 못했습니다: {string.Join(", ", texts)}");
+    }
+
+    private static async Task WaitUntilAnyTextOrRetryClickAsync(
+        IPage page,
+        IReadOnlyCollection<string> texts,
+        string retryClickText,
+        TimeSpan timeout,
+        IProgress<AutomationProgress> progress,
+        CancellationToken cancellationToken,
+        bool preferUpperArea = false,
+        bool preferLowerArea = false)
+    {
+        var firstWait = TimeSpan.FromMilliseconds(Math.Max(1000, Math.Min(timeout.TotalMilliseconds / 2, 5000)));
+        if (await TryWaitUntilAnyTextAsync(page, texts, firstWait, cancellationToken))
+        {
+            return;
+        }
+
+        progress.Report(AutomationProgress.Warning($"완료 상태가 아직 보이지 않아 '{retryClickText}' 버튼을 한 번 더 클릭합니다."));
+        await ClickTextAsync(page, retryClickText, timeout, cancellationToken, preferUpperArea, preferLowerArea);
+        await WaitUntilAnyTextAsync(page, texts, timeout, cancellationToken);
+    }
+
+    private static async Task<bool> TryWaitUntilAnyTextAsync(IPage page, IReadOnlyCollection<string> texts, TimeSpan timeout, CancellationToken cancellationToken)
+    {
         var deadline = DateTime.UtcNow.Add(timeout);
         while (DateTime.UtcNow < deadline)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (await PageContainsAnyAsync(page, texts, cancellationToken))
             {
-                return;
+                return true;
             }
 
             await Task.Delay(500, cancellationToken);
         }
 
-        throw new TimeoutException($"화면에서 다음 텍스트를 찾지 못했습니다: {string.Join(", ", texts)}");
+        return false;
     }
 
     private static async Task<IPage> RefreshActivePageAsync(
