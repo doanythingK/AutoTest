@@ -242,7 +242,25 @@ public sealed class ErpAutomationService
         if (pressEnter)
         {
             await page.Keyboard.PressAsync("Enter");
-            await Task.Delay(200, cancellationToken);
+            await WaitAfterEnterAsync(page, timeout, cancellationToken);
+        }
+    }
+
+    private static async Task WaitAfterEnterAsync(IPage page, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        await Task.Delay(500, cancellationToken);
+
+        var settleTimeout = TimeSpan.FromMilliseconds(Math.Min(timeout.TotalMilliseconds, 3000));
+        var deadline = DateTime.UtcNow.Add(settleTimeout);
+        while (DateTime.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!await PageHasBusyIndicatorAsync(page, cancellationToken))
+            {
+                return;
+            }
+
+            await Task.Delay(250, cancellationToken);
         }
     }
 
@@ -580,6 +598,48 @@ public sealed class ErpAutomationService
                         return false;
                     }",
                     labels);
+                if (found)
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // Some transient frames can disappear while the ERP screen is changing.
+            }
+        }
+
+        return false;
+    }
+
+    private static async Task<bool> PageHasBusyIndicatorAsync(IPage page, CancellationToken cancellationToken)
+    {
+        foreach (var frame in page.Frames)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var found = await frame.EvaluateAsync<bool>(
+                    @"() => {
+                        const visible = element => {
+                            const style = window.getComputedStyle(element);
+                            const rect = element.getBoundingClientRect();
+                            return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+                        };
+                        const busyText = /처리중|조회중|검색중|로딩|잠시만|loading|please wait/i;
+                        const busyClass = /(^|[-_\s])(loading|loadmask|spinner|progress|wait)([-_\s]|$)/i;
+                        return Array.from(document.querySelectorAll('div, span, td, th, label, button, input'))
+                            .filter(visible)
+                            .some(element => {
+                                const text = [element.innerText, element.textContent, element.value, element.title, element.getAttribute('aria-label')]
+                                    .filter(Boolean)
+                                    .join(' ');
+                                const attrs = [element.id, element.className, element.getAttribute('role')]
+                                    .filter(Boolean)
+                                    .join(' ');
+                                return element.getAttribute('aria-busy') === 'true' || busyText.test(text) || busyClass.test(attrs);
+                            });
+                    }");
                 if (found)
                 {
                     return true;
