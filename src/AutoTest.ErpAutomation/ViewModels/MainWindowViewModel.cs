@@ -14,6 +14,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly AutomationSettingsService _settingsService;
     private readonly AutomationRunLogService _runLogService;
     private readonly AutomationVerificationReportService _verificationReportService;
+    private readonly AutomationVerificationPackageService _verificationPackageService;
     private readonly FolderOpenService _folderOpenService;
     private CancellationTokenSource? _automationCancellation;
     private string? _currentRunLogPath;
@@ -73,6 +74,12 @@ public partial class MainWindowViewModel : ObservableObject
     private string lastVerificationReportFilePath = string.Empty;
 
     [ObservableProperty]
+    private string lastVerificationPackagePath = string.Empty;
+
+    [ObservableProperty]
+    private string lastVerificationPackageFilePath = string.Empty;
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RunAutomationCommand))]
     [NotifyCanExecuteChangedFor(nameof(CancelAutomationCommand))]
     [NotifyCanExecuteChangedFor(nameof(CheckChromeCommand))]
@@ -86,6 +93,7 @@ public partial class MainWindowViewModel : ObservableObject
         AutomationSettingsService settingsService,
         AutomationRunLogService runLogService,
         AutomationVerificationReportService verificationReportService,
+        AutomationVerificationPackageService verificationPackageService,
         FolderOpenService folderOpenService)
     {
         _chromeConnectionService = chromeConnectionService;
@@ -93,6 +101,7 @@ public partial class MainWindowViewModel : ObservableObject
         _settingsService = settingsService;
         _runLogService = runLogService;
         _verificationReportService = verificationReportService;
+        _verificationPackageService = verificationPackageService;
         _folderOpenService = folderOpenService;
 
         var settings = _settingsService.Load();
@@ -249,6 +258,53 @@ public partial class MainWindowViewModel : ObservableObject
         {
             AddError($"최근 검증 리포트 열기 실패: {ex.Message}");
             StatusMessage = "최근 검증 리포트 열기 실패";
+        }
+    }
+
+    [RelayCommand]
+    private void CreateVerificationPackage()
+    {
+        try
+        {
+            var path = _verificationPackageService.CreatePackage(
+                _runLogService.LogDirectory,
+                _verificationReportService.ReportDirectory,
+                ErpAutomationService.FailureDirectory,
+                LastRunLogFilePath,
+                LastVerificationReportFilePath);
+            LastVerificationPackageFilePath = path;
+            LastVerificationPackagePath = $"검증 자료 압축: {path}";
+            AddInfo($"검증 자료 압축 파일을 생성했습니다: {path}");
+            StatusMessage = "검증 자료 압축 완료";
+        }
+        catch (Exception ex)
+        {
+            AddError($"검증 자료 압축 실패: {ex.Message}");
+            StatusMessage = "검증 자료 압축 실패";
+        }
+    }
+
+    [RelayCommand]
+    private void OpenVerificationPackageFolder()
+    {
+        OpenFolder(_verificationPackageService.PackageDirectory, "검증 자료 압축 폴더");
+    }
+
+    [RelayCommand]
+    private void OpenLatestVerificationPackage()
+    {
+        try
+        {
+            var path = !string.IsNullOrWhiteSpace(LastVerificationPackageFilePath)
+                ? OpenFile(LastVerificationPackageFilePath)
+                : _folderOpenService.OpenLatestFile(_verificationPackageService.PackageDirectory, "erp_verification_package_*.zip");
+            AddInfo($"최근 검증 자료 압축 파일을 열었습니다: {path}");
+            StatusMessage = "최근 검증 자료 압축 열기 완료";
+        }
+        catch (Exception ex)
+        {
+            AddError($"최근 검증 자료 압축 열기 실패: {ex.Message}");
+            StatusMessage = "최근 검증 자료 압축 열기 실패";
         }
     }
 

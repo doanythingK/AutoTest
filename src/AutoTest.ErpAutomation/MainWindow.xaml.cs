@@ -15,6 +15,7 @@ public partial class MainWindow : Window
             new AutomationSettingsService(),
             new AutomationRunLogService(),
             new AutomationVerificationReportService(),
+            new AutomationVerificationPackageService(),
             new FolderOpenService());
     }
 }

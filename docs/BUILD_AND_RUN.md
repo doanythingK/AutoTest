@@ -75,6 +75,7 @@ AutoTest.ErpAutomation-win-x64.zip
 
 - `RunLogs`: 실행 로그
 - `VerificationReports`: 30단계 실행 대조 Markdown 리포트
+- `VerificationPackages`: 실행 로그, 검증 리포트, 실패 자료 압축 파일
 - `Failures`: 실패 화면 PNG와 전체 프레임 HTML
 - `settings.json`: Chrome 연결 설정
 
