@@ -19,6 +19,12 @@ Chrome 연결은 원격 디버깅 포트 `9222`를 기준으로 합니다.
 chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 ```
 
+프로그램의 `Chrome 연결 설정` 영역에서 Chrome 경로, 프로필 디렉터리, 원격 디버깅 포트를 변경할 수 있습니다. 설정은 아래 경로에 저장됩니다.
+
+```text
+%LOCALAPPDATA%\AutoTest.ErpAutomation\settings.json
+```
+
 ## 구현된 자동화 흐름
 
 1. WPF 화면에서 수량, 단가, 거래처코드, 계정코드, 거래일자를 입력한다.

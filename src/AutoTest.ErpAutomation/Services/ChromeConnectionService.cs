@@ -2,13 +2,12 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
+using AutoTest.ErpAutomation.Models;
 
 namespace AutoTest.ErpAutomation.Services;
 
 public sealed class ChromeConnectionService
 {
-    public const string DebugEndpoint = "http://127.0.0.1:9222";
-
     private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(2);
 
     private readonly HttpClient _httpClient = new()
@@ -16,11 +15,11 @@ public sealed class ChromeConnectionService
         Timeout = CheckTimeout
     };
 
-    public async Task<ChromeConnectionResult> CheckConnectionAsync(CancellationToken cancellationToken)
+    public async Task<ChromeConnectionResult> CheckConnectionAsync(AutomationSettings settings, CancellationToken cancellationToken)
     {
         try
         {
-            using var response = await _httpClient.GetAsync($"{DebugEndpoint}/json/version", cancellationToken);
+            using var response = await _httpClient.GetAsync($"{settings.DebugEndpoint}/json/version", cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 return ChromeConnectionResult.Fail($"Chrome CDP 응답 오류: {(int)response.StatusCode}");
@@ -42,14 +41,21 @@ public sealed class ChromeConnectionService
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
         {
-            return ChromeConnectionResult.Fail("Chrome 원격 디버깅 포트(9222)에 연결할 수 없습니다.");
+            return ChromeConnectionResult.Fail($"Chrome 원격 디버깅 포트({settings.RemoteDebuggingPort})에 연결할 수 없습니다.");
         }
     }
 
-    public Process StartChromeWithRemoteDebugging()
+    public Process StartChromeWithRemoteDebugging(AutomationSettings settings)
     {
-        var chromePath = FindChromePath()
+        var chromePath = !string.IsNullOrWhiteSpace(settings.ChromePath)
+            ? settings.ChromePath
+            : FindChromePath()
             ?? throw new FileNotFoundException("Chrome 실행 파일을 찾을 수 없습니다.");
+
+        if (!File.Exists(chromePath))
+        {
+            throw new FileNotFoundException($"Chrome 실행 파일을 찾을 수 없습니다: {chromePath}");
+        }
 
         var startInfo = new ProcessStartInfo
         {
@@ -57,8 +63,12 @@ public sealed class ChromeConnectionService
             UseShellExecute = false
         };
 
-        startInfo.ArgumentList.Add("--remote-debugging-port=9222");
-        startInfo.ArgumentList.Add("--profile-directory=Default");
+        startInfo.ArgumentList.Add($"--remote-debugging-port={settings.RemoteDebuggingPort}");
+        if (!string.IsNullOrWhiteSpace(settings.ChromeProfileDirectory))
+        {
+            startInfo.ArgumentList.Add($"--profile-directory={settings.ChromeProfileDirectory}");
+        }
+
         startInfo.ArgumentList.Add("https://ibcenter.co.kr/erp/erp/erplogin/erplogin_dispatch.jsp");
 
         var process = Process.Start(startInfo)

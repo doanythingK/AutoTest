@@ -12,13 +12,14 @@ public sealed class ErpAutomationService
 
     public async Task RunAsync(
         AutomationInput input,
+        AutomationSettings settings,
         IProgress<AutomationProgress> progress,
         CancellationToken cancellationToken)
     {
         progress.Report(AutomationProgress.Info("Chrome CDP에 연결합니다."));
 
         using var playwright = await Playwright.CreateAsync();
-        var browser = await playwright.Chromium.ConnectOverCDPAsync(ChromeConnectionService.DebugEndpoint);
+        var browser = await playwright.Chromium.ConnectOverCDPAsync(settings.DebugEndpoint);
         var context = browser.Contexts.FirstOrDefault()
             ?? throw new InvalidOperationException("연결된 Chrome 컨텍스트를 찾을 수 없습니다.");
 

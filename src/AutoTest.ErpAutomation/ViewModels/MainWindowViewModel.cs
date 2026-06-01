@@ -10,6 +10,7 @@ public partial class MainWindowViewModel : ObservableObject
 {
     private readonly ChromeConnectionService _chromeConnectionService;
     private readonly ErpAutomationService _erpAutomationService;
+    private readonly AutomationSettingsService _settingsService;
     private CancellationTokenSource? _automationCancellation;
 
     [ObservableProperty]
@@ -32,6 +33,15 @@ public partial class MainWindowViewModel : ObservableObject
     private DateTime? transactionDate = DateTime.Today;
 
     [ObservableProperty]
+    private string chromePath = string.Empty;
+
+    [ObservableProperty]
+    private string chromeProfileDirectory = "Default";
+
+    [ObservableProperty]
+    private string remoteDebuggingPortText = "9222";
+
+    [ObservableProperty]
     private string chromeStatus = "Chrome 연결을 확인하지 않았습니다.";
 
     [ObservableProperty]
@@ -42,10 +52,19 @@ public partial class MainWindowViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(CancelAutomationCommand))]
     private bool isRunning;
 
-    public MainWindowViewModel(ChromeConnectionService chromeConnectionService, ErpAutomationService erpAutomationService)
+    public MainWindowViewModel(
+        ChromeConnectionService chromeConnectionService,
+        ErpAutomationService erpAutomationService,
+        AutomationSettingsService settingsService)
     {
         _chromeConnectionService = chromeConnectionService;
         _erpAutomationService = erpAutomationService;
+        _settingsService = settingsService;
+
+        var settings = _settingsService.Load();
+        ChromePath = settings.ChromePath;
+        ChromeProfileDirectory = settings.ChromeProfileDirectory;
+        RemoteDebuggingPortText = settings.RemoteDebuggingPort.ToString();
     }
 
     public ObservableCollection<AutomationLogEntry> Logs { get; } = new();
@@ -61,8 +80,15 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task CheckChromeAsync()
     {
+        if (!TryCreateSettings(out var settings, out var error))
+        {
+            AddWarning(error);
+            StatusMessage = "Chrome 설정 확인 필요";
+            return;
+        }
+
         AddInfo("Chrome 연결을 확인합니다.");
-        var result = await _chromeConnectionService.CheckConnectionAsync(CancellationToken.None);
+        var result = await _chromeConnectionService.CheckConnectionAsync(settings, CancellationToken.None);
         ChromeStatus = result.Message;
 
         if (result.IsConnected)
@@ -79,10 +105,17 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void StartChrome()
     {
+        if (!TryCreateSettings(out var settings, out var error))
+        {
+            AddWarning(error);
+            StatusMessage = "Chrome 설정 확인 필요";
+            return;
+        }
+
         try
         {
-            _chromeConnectionService.StartChromeWithRemoteDebugging();
-            AddInfo("Chrome을 원격 디버깅 포트 9222로 실행했습니다.");
+            _chromeConnectionService.StartChromeWithRemoteDebugging(settings);
+            AddInfo($"Chrome을 원격 디버깅 포트 {settings.RemoteDebuggingPort}로 실행했습니다.");
             StatusMessage = "Chrome 실행 완료";
         }
         catch (Exception ex)
@@ -92,6 +125,21 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    private void SaveSettings()
+    {
+        if (!TryCreateSettings(out var settings, out var error))
+        {
+            AddWarning(error);
+            StatusMessage = "Chrome 설정 저장 실패";
+            return;
+        }
+
+        _settingsService.Save(settings);
+        AddInfo($"Chrome 설정을 저장했습니다: {_settingsService.SettingsPath}");
+        StatusMessage = "Chrome 설정 저장 완료";
+    }
+
     [RelayCommand(CanExecute = nameof(CanRunAutomation))]
     private async Task RunAutomationAsync()
     {
@@ -99,6 +147,13 @@ public partial class MainWindowViewModel : ObservableObject
         {
             AddWarning(error);
             StatusMessage = "입력값 확인 필요";
+            return;
+        }
+
+        if (!TryCreateSettings(out var settings, out error))
+        {
+            AddWarning(error);
+            StatusMessage = "Chrome 설정 확인 필요";
             return;
         }
 
@@ -113,7 +168,7 @@ public partial class MainWindowViewModel : ObservableObject
         try
         {
             var progress = new Progress<AutomationProgress>(OnAutomationProgress);
-            await _erpAutomationService.RunAsync(input, progress, _automationCancellation.Token);
+            await _erpAutomationService.RunAsync(input, settings, progress, _automationCancellation.Token);
             StatusMessage = "자동화 완료";
         }
         catch (OperationCanceledException)
@@ -130,6 +185,27 @@ public partial class MainWindowViewModel : ObservableObject
         {
             IsRunning = false;
         }
+    }
+
+    private bool TryCreateSettings(out AutomationSettings settings, out string error)
+    {
+        settings = new AutomationSettings
+        {
+            ChromePath = (ChromePath ?? string.Empty).Trim(),
+            ChromeProfileDirectory = string.IsNullOrWhiteSpace(ChromeProfileDirectory)
+                ? "Default"
+                : ChromeProfileDirectory.Trim()
+        };
+
+        if (!int.TryParse(RemoteDebuggingPortText, out var port) || port < 1 || port > 65535)
+        {
+            error = "원격 디버깅 포트는 1부터 65535 사이의 숫자로 입력해야 합니다.";
+            return false;
+        }
+
+        settings.RemoteDebuggingPort = port;
+        error = string.Empty;
+        return true;
     }
 
     private bool CanRunAutomation()
