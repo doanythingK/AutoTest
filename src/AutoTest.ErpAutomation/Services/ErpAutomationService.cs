@@ -120,7 +120,7 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[24/30] 라인 목록 반영 여부를 확인합니다.", async () =>
             {
-                await WaitUntilAllGroupsAsync(page, input.LineResultGroups, stepTimeout, cancellationToken);
+                await WaitUntilLineResultRowAsync(page, input.LineResultGroups, stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, "[25/30] 거래전기[S] 버튼을 클릭합니다.", () => ClickTextAsync(page, "거래전기", stepTimeout, cancellationToken));
@@ -265,6 +265,28 @@ public sealed class ErpAutomationService
         throw new TimeoutException($"화면에서 다음 항목 조합을 찾지 못했습니다: {string.Join(", ", expected)}");
     }
 
+    private static async Task WaitUntilLineResultRowAsync(
+        IPage page,
+        IReadOnlyCollection<IReadOnlyCollection<string>> groups,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        var deadline = DateTime.UtcNow.Add(timeout);
+        while (DateTime.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (await PageContainsLineResultRowAsync(page, groups, cancellationToken))
+            {
+                return;
+            }
+
+            await Task.Delay(500, cancellationToken);
+        }
+
+        var expected = groups.Select(group => $"[{string.Join(" 또는 ", group)}]");
+        throw new TimeoutException($"라인 목록 행에서 다음 항목 조합을 찾지 못했습니다: {string.Join(", ", expected)}");
+    }
+
     private static async Task<bool> PageContainsAnyAsync(IPage page, IReadOnlyCollection<string> texts, CancellationToken cancellationToken)
     {
         foreach (var frame in page.Frames)
@@ -308,6 +330,53 @@ public sealed class ErpAutomationService
                         const normalizedBodyText = bodyText.replace(/[,\s]/g, '');
                         const normalize = value => String(value || '').replace(/[,\s]/g, '');
                         return groups.every(group => group.some(text => normalizedBodyText.includes(normalize(text))));
+                    }",
+                    groups);
+                if (found)
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // Some transient frames can disappear while the ERP screen is changing.
+            }
+        }
+
+        return false;
+    }
+
+    private static async Task<bool> PageContainsLineResultRowAsync(
+        IPage page,
+        IReadOnlyCollection<IReadOnlyCollection<string>> groups,
+        CancellationToken cancellationToken)
+    {
+        foreach (var frame in page.Frames)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var found = await frame.EvaluateAsync<bool>(
+                    @"(groups) => {
+                        const normalize = value => String(value || '').replace(/[,\s]/g, '');
+                        const visible = element => {
+                            const style = window.getComputedStyle(element);
+                            const rect = element.getBoundingClientRect();
+                            return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+                        };
+                        const rowSelectors = [
+                            'tr',
+                            '[role=row]',
+                            '.x-grid-row',
+                            '.grid-row',
+                            '.jqgrow',
+                            '.ui-row-ltr'
+                        ];
+                        const rows = Array.from(document.querySelectorAll(rowSelectors.join(',')))
+                            .filter(visible)
+                            .map(element => normalize(element.innerText || element.textContent))
+                            .filter(text => text.length > 0);
+                        return rows.some(rowText => groups.every(group => group.some(text => rowText.includes(normalize(text)))));
                     }",
                     groups);
                 if (found)
