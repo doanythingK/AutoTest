@@ -72,7 +72,8 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[07/30] 회계관리 버튼을 클릭합니다.", () => ClickTextAsync(page, "회계관리", stepTimeout, cancellationToken));
             await StepAsync(progress, "[08/30] 거래전표 메뉴를 펼칩니다.", () => ClickTextAsync(page, "거래전표", stepTimeout, cancellationToken));
-            await StepAsync(progress, "[09/30] 거래전표(매출등록) 메뉴를 펼칩니다.", () => ClickTextAsync(page, "거래전표(매출등록)", stepTimeout, cancellationToken));
+            await StepAsync(progress, "[09/30] 거래전표(매출등록) 메뉴를 펼칩니다.", () =>
+                ClickAnyTextAsync(page, new[] { "거래전표(매출등록)", "매출등록" }, stepTimeout, cancellationToken));
             await StepAsync(progress, "[10/30] 원화 버튼을 클릭합니다.", () => ClickTextAsync(page, "원화", stepTimeout, cancellationToken));
 
             await StepAsync(progress, $"[11/30] 거래일자에 오늘 날짜({input.TransactionDateText})를 입력합니다.", () =>
@@ -248,6 +249,31 @@ public sealed class ErpAutomationService
             cancellationToken);
 
         await WaitAfterClickAsync(page, timeout, cancellationToken);
+    }
+
+    private static async Task ClickAnyTextAsync(
+        IPage page,
+        IReadOnlyCollection<string> texts,
+        TimeSpan timeout,
+        CancellationToken cancellationToken,
+        bool preferUpperArea = false,
+        bool preferLowerArea = false)
+    {
+        var quickTimeout = TimeSpan.FromMilliseconds(Math.Min(timeout.TotalMilliseconds, 2500));
+        foreach (var text in texts)
+        {
+            if (await TryRunInAnyFrameAsync(
+                page,
+                frame => ClickTextInFrameAsync(page, frame, text, preferUpperArea, preferLowerArea),
+                quickTimeout,
+                cancellationToken))
+            {
+                await WaitAfterClickAsync(page, timeout, cancellationToken);
+                return;
+            }
+        }
+
+        throw new TimeoutException($"다음 텍스트 중 클릭 대상을 찾지 못했습니다: {string.Join(", ", texts)}");
     }
 
     private static async Task FillNearLabelAsync(
