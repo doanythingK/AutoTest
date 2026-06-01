@@ -318,7 +318,9 @@ public sealed class ErpAutomationService
                 var found = await frame.EvaluateAsync<bool>(
                     @"(texts) => {
                         const bodyText = (document.body?.innerText || '').replace(/\s+/g, ' ');
-                        return texts.some(text => bodyText.includes(text));
+                        const normalizeKey = value => String(value || '').replace(/[\s:：]/g, '');
+                        const bodyKey = normalizeKey(bodyText);
+                        return texts.some(text => bodyText.includes(text) || bodyKey.includes(normalizeKey(text)));
                     }",
                     texts);
                 if (found)
