@@ -617,6 +617,24 @@ public sealed class ErpAutomationService
                     const rect = element.getBoundingClientRect();
                     return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
                 };
+                const isCredentialControl = control => {
+                    const attrs = [
+                        control.getAttribute('type'),
+                        control.getAttribute('name'),
+                        control.getAttribute('id'),
+                        control.getAttribute('autocomplete'),
+                        control.getAttribute('placeholder'),
+                        control.getAttribute('aria-label')
+                    ].map(normalizeKey).join(' ');
+                    return attrs.includes('password')
+                        || attrs.includes('passwd')
+                        || attrs.includes('pwd')
+                        || attrs.includes('currentpassword')
+                        || attrs.includes('newpassword')
+                        || attrs.includes('username')
+                        || attrs.includes('userid')
+                        || attrs.includes('loginid');
+                };
                 const chooseValue = control => {
                     const type = normalize(control.getAttribute('type')).toLowerCase();
                     const hint = normalize([
@@ -633,7 +651,8 @@ public sealed class ErpAutomationService
                     if (control.maxLength === 8 || hint.includes('8')) return find(/^\d{8}$/);
                     return values[0];
                 };
-                const controls = () => Array.from(document.querySelectorAll('input:not([type=hidden]), textarea, [contenteditable=true]')).filter(visible);
+                const controls = () => Array.from(document.querySelectorAll('input:not([type=hidden]), textarea, [contenteditable=true]'))
+                    .filter(element => visible(element) && !isCredentialControl(element));
                 const setValue = control => {
                     const value = chooseValue(control);
                     control.scrollIntoView({ block: 'center', inline: 'center' });
@@ -660,7 +679,8 @@ public sealed class ErpAutomationService
                     const row = labelElement.closest('tr');
                     const labelRect = labelElement.getBoundingClientRect();
                     if (row) {
-                        const rowControls = Array.from(row.querySelectorAll('input:not([type=hidden]), textarea, [contenteditable=true]')).filter(visible);
+                        const rowControls = Array.from(row.querySelectorAll('input:not([type=hidden]), textarea, [contenteditable=true]'))
+                            .filter(element => visible(element) && !isCredentialControl(element));
                         const target = rowControls
                             .map(control => ({ control, score: scoreControl(control, labelRect) }))
                             .sort((a, b) => a.score - b.score)[0]?.control;
