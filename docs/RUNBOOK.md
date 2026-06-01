@@ -38,7 +38,7 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 
 거래처코드와 계정코드에는 공백을 넣지 않는다. 앞뒤 공백은 제거되지만, 중간 공백이 있으면 실행할 수 없다.
 
-거래일자는 사용자가 입력하지 않는다. 자동화 실행 직전에 오늘 날짜로 갱신되며, ERP 입력칸 형식에 맞춰 `yyyy-MM-dd`, `yyyy.MM.dd`, `yyyyMMdd` 중 하나로 입력된다.
+거래일자는 사용자가 입력하지 않는다. WPF에는 실행일 기준 오늘 날짜가 표시만 되며, ERP 입력칸 형식에 맞춰 `yyyy-MM-dd`, `yyyy.MM.dd`, `yyyyMMdd` 중 하나로 입력된다.
 
 ## 자동화 중 지켜야 할 사항
 

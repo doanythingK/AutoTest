@@ -102,10 +102,17 @@
                     </StackPanel>
 
                     <StackPanel Grid.Row="5" Margin="0,14,0,0">
-                        <TextBlock Text="거래일자" Margin="0,0,0,6" />
-                        <DatePicker SelectedDate="{Binding TransactionDate}"
-                                    Height="34"
-                                    IsEnabled="False" />
+                        <TextBlock Text="거래일자(자동)" Margin="0,0,0,6" />
+                        <Border Background="#F8FAFC"
+                                BorderBrush="#D5DCE3"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Height="34"
+                                Padding="8,0">
+                            <TextBlock Text="{Binding TodayTransactionDateText}"
+                                       VerticalAlignment="Center"
+                                       Foreground="#1F2A33" />
+                        </Border>
                     </StackPanel>
 
                     <Border Grid.Row="6"

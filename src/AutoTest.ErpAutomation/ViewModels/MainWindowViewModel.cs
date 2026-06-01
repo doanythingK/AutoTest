@@ -42,11 +42,6 @@ public partial class MainWindowViewModel : ObservableObject
     private string creditAccountCode = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(InputStatusText))]
-    [NotifyCanExecuteChangedFor(nameof(RunAutomationCommand))]
-    private DateTime? transactionDate = DateTime.Today;
-
-    [ObservableProperty]
     private string chromePath = string.Empty;
 
     [ObservableProperty]
@@ -111,6 +106,8 @@ public partial class MainWindowViewModel : ObservableObject
     public string InputStatusText => TryCreateInput(out _, out var error)
         ? "입력값 확인 완료"
         : error;
+
+    public string TodayTransactionDateText => DateTime.Today.ToString("yyyy-MM-dd");
 
     [RelayCommand(CanExecute = nameof(CanUseIdleCommands))]
     private async Task CheckChromeAsync()
@@ -237,8 +234,6 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanRunAutomation))]
     private async Task RunAutomationAsync()
     {
-        TransactionDate = DateTime.Today;
-
         if (!TryCreateInput(out var input, out var error))
         {
             AddWarning(error);
@@ -396,7 +391,6 @@ public partial class MainWindowViewModel : ObservableObject
             UnitPriceText,
             ClientCode,
             CreditAccountCode,
-            TransactionDate,
             out var parsed,
             out error))
         {

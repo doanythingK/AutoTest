@@ -102,7 +102,6 @@ public sealed record AutomationInput(
         string unitPriceText,
         string clientCode,
         string creditAccountCode,
-        DateTime? transactionDate,
         out AutomationInput? input,
         out string error)
     {
@@ -152,7 +151,7 @@ public sealed record AutomationInput(
             unitPrice,
             normalizedClientCode,
             normalizedCreditAccountCode,
-            DateOnly.FromDateTime(transactionDate ?? DateTime.Today));
+            DateOnly.FromDateTime(DateTime.Today));
         return true;
     }
 
