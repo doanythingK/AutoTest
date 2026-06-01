@@ -1625,7 +1625,7 @@ public sealed class ErpAutomationService
             try
             {
                 builder.AppendLine("<pre>");
-                builder.AppendLine(WebUtility.HtmlEncode(await frame.ContentAsync()));
+                builder.AppendLine(WebUtility.HtmlEncode(await GetSanitizedFrameContentAsync(frame)));
                 builder.AppendLine("</pre>");
             }
             catch (Exception ex)
@@ -1705,5 +1705,46 @@ public sealed class ErpAutomationService
             }");
 
         return string.Join(Environment.NewLine, lines);
+    }
+
+    private static Task<string> GetSanitizedFrameContentAsync(IFrame frame)
+    {
+        return frame.EvaluateAsync<string>(
+            @"() => {
+                const normalize = value => String(value || '').replace(/\s+/g, ' ').trim();
+                const normalizeKey = value => normalize(value).replace(/[\s()[\]{}<>\/\\:_-]/g, '').toLowerCase();
+                const isCredentialControl = element => {
+                    const attrs = [
+                        element.getAttribute('type'),
+                        element.getAttribute('name'),
+                        element.getAttribute('id'),
+                        element.getAttribute('autocomplete'),
+                        element.getAttribute('placeholder'),
+                        element.getAttribute('aria-label')
+                    ].map(normalizeKey).join(' ');
+                    return attrs.includes('password')
+                        || attrs.includes('passwd')
+                        || attrs.includes('pwd')
+                        || attrs.includes('currentpassword')
+                        || attrs.includes('newpassword')
+                        || attrs.includes('username')
+                        || attrs.includes('userid')
+                        || attrs.includes('loginid');
+                };
+                const selector = 'input, textarea, [contenteditable=true]';
+                const sourceControls = Array.from(document.querySelectorAll(selector));
+                const clone = document.documentElement.cloneNode(true);
+                const cloneControls = Array.from(clone.querySelectorAll(selector));
+                sourceControls.forEach((source, index) => {
+                    if (!isCredentialControl(source)) return;
+                    const target = cloneControls[index];
+                    if (!target) return;
+                    target.setAttribute('value', '(masked)');
+                    if (target.tagName?.toLowerCase() === 'textarea' || target.isContentEditable) {
+                        target.textContent = '(masked)';
+                    }
+                });
+                return '<!doctype html>\n' + clone.outerHTML;
+            }");
     }
 }
