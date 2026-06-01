@@ -508,13 +508,16 @@ public sealed class ErpAutomationService
         return frame.EvaluateAsync<bool>(
             @"(text) => {
                 const normalize = value => (value || '').replace(/\s+/g, ' ').trim();
+                const normalizeKey = value => normalize(value).replace(/[\s()[\]{}<>\/\\:_-]/g, '');
                 const targetText = normalize(text);
+                const targetKey = normalizeKey(text);
                 const visible = element => {
                     const style = window.getComputedStyle(element);
                     const rect = element.getBoundingClientRect();
                     return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
                 };
                 const textOf = element => normalize(element.innerText || element.value || element.title || element.getAttribute('aria-label'));
+                const matchesText = item => item.value === targetText || item.value.includes(targetText) || item.key.includes(targetKey);
                 const isActionElement = element => {
                     const tag = element.tagName.toLowerCase();
                     const role = normalize(element.getAttribute('role')).toLowerCase();
@@ -528,6 +531,7 @@ public sealed class ErpAutomationService
                 const score = item => {
                     let value = 0;
                     if (item.value === targetText) value -= 1000;
+                    if (item.key === targetKey) value -= 700;
                     if (isActionElement(item.element)) value -= 300;
                     value += Math.min(item.value.length, 300);
                     value += Math.min(item.rect.width * item.rect.height / 1000, 300);
@@ -536,8 +540,11 @@ public sealed class ErpAutomationService
                 const candidates = Array.from(document.querySelectorAll('button, a, input, div, span, td, li'));
                 const matched = candidates
                     .filter(visible)
-                    .map(element => ({ element, value: textOf(element), rect: element.getBoundingClientRect() }))
-                    .filter(item => item.value === targetText || item.value.includes(targetText))
+                    .map(element => {
+                        const value = textOf(element);
+                        return { element, value, key: normalizeKey(value), rect: element.getBoundingClientRect() };
+                    })
+                    .filter(matchesText)
                     .sort((a, b) => score(a) - score(b));
                 if (matched.length === 0) return false;
                 const found = matched[0].element;
