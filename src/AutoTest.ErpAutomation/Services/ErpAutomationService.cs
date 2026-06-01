@@ -793,7 +793,36 @@ public sealed class ErpAutomationService
                             .filter(visible)
                             .map(rowText)
                             .filter(text => text.length > 0);
-                        return rows.some(rowText => groups.every(group => group.some(text => rowText.includes(normalize(text)))));
+                        if (rows.some(rowText => groups.every(group => group.some(text => rowText.includes(normalize(text)))))) {
+                            return true;
+                        }
+
+                        const valueOf = element => [
+                            element.value,
+                            element.innerText,
+                            element.textContent,
+                            element.getAttribute('title'),
+                            element.getAttribute('aria-label')
+                        ].filter(Boolean).join(' ');
+                        const cells = Array.from(document.querySelectorAll('td, th, div, span, input:not([type=hidden]), textarea, [role=gridcell], [role=cell]'))
+                            .filter(visible)
+                            .map(element => ({ text: normalize(valueOf(element)), rect: element.getBoundingClientRect() }))
+                            .filter(item => item.text.length > 0 && item.rect.width > 0 && item.rect.height > 0)
+                            .sort((a, b) => a.rect.top - b.rect.top || a.rect.left - b.rect.left);
+                        const visualRows = [];
+                        for (const cell of cells) {
+                            let row = visualRows.find(candidate => Math.abs(candidate.top - cell.rect.top) <= 12);
+                            if (!row) {
+                                row = { top: cell.rect.top, texts: [] };
+                                visualRows.push(row);
+                            }
+
+                            row.texts.push(cell.text);
+                        }
+
+                        return visualRows
+                            .map(row => row.texts.join(''))
+                            .some(rowText => groups.every(group => group.some(text => rowText.includes(normalize(text)))));
                     }",
                     groups);
                 if (found)
