@@ -264,23 +264,42 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void CreateVerificationPackage()
     {
+        CreateVerificationPackage(LastRunLogFilePath, LastVerificationReportFilePath, updateStatus: true, errorAsWarning: false);
+    }
+
+    private void CreateVerificationPackage(
+        string? runLogPath,
+        string? verificationReportPath,
+        bool updateStatus,
+        bool errorAsWarning)
+    {
         try
         {
             var path = _verificationPackageService.CreatePackage(
                 _runLogService.LogDirectory,
                 _verificationReportService.ReportDirectory,
                 ErpAutomationService.FailureDirectory,
-                LastRunLogFilePath,
-                LastVerificationReportFilePath);
+                runLogPath,
+                verificationReportPath);
             LastVerificationPackageFilePath = path;
             LastVerificationPackagePath = $"검증 자료 압축: {path}";
             AddInfo($"검증 자료 압축 파일을 생성했습니다: {path}");
-            StatusMessage = "검증 자료 압축 완료";
+            if (updateStatus)
+            {
+                StatusMessage = "검증 자료 압축 완료";
+            }
         }
         catch (Exception ex)
         {
-            AddError($"검증 자료 압축 실패: {ex.Message}");
-            StatusMessage = "검증 자료 압축 실패";
+            if (errorAsWarning)
+            {
+                AddWarning($"검증 자료 자동 압축 실패: {ex.Message}");
+            }
+            else
+            {
+                AddError($"검증 자료 압축 실패: {ex.Message}");
+                StatusMessage = "검증 자료 압축 실패";
+            }
         }
     }
 
@@ -397,9 +416,10 @@ public partial class MainWindowViewModel : ObservableObject
                 AddInfo($"자동화 소요 시간: {FormatElapsed(runStopwatch.Elapsed)}");
                 AddInfo($"실행 로그 저장 완료: {_currentRunLogPath}");
 
+                string? reportPath = null;
                 try
                 {
-                    var reportPath = _verificationReportService.CreateReport(
+                    reportPath = _verificationReportService.CreateReport(
                         input,
                         settings,
                         runResult,
@@ -413,6 +433,8 @@ public partial class MainWindowViewModel : ObservableObject
                 {
                     AddWarning($"30단계 검증 리포트 저장 실패: {ex.Message}");
                 }
+
+                CreateVerificationPackage(_currentRunLogPath, reportPath, updateStatus: false, errorAsWarning: true);
             }
 
             _currentRunLogPath = null;
