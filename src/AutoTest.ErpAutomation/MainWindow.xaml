@@ -143,6 +143,11 @@
                             <TextBox Text="{Binding RemoteDebuggingPortText, UpdateSourceTrigger=PropertyChanged}"
                                      Height="32"
                                      VerticalContentAlignment="Center" />
+
+                            <TextBlock Text="단계 대기 시간(초)" Margin="0,12,0,6" />
+                            <TextBox Text="{Binding StepTimeoutSecondsText, UpdateSourceTrigger=PropertyChanged}"
+                                     Height="32"
+                                     VerticalContentAlignment="Center" />
                         </StackPanel>
                     </Expander>
                 </Grid>
@@ -161,15 +166,15 @@
                     </Grid.RowDefinitions>
 
                     <DockPanel Grid.Row="0" Margin="0,0,0,14">
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                        <Button Command="{Binding CancelAutomationCommand}"
-                                Content="중지"
-                                Margin="0,0,8,0"
-                                Padding="16,9" />
-                        <Button Command="{Binding RunAutomationCommand}"
-                                Content="자동화 실행"
-                                Padding="20,9" />
-                    </StackPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Command="{Binding CancelAutomationCommand}"
+                                    Content="중지"
+                                    Margin="0,0,8,0"
+                                    Padding="16,9" />
+                            <Button Command="{Binding RunAutomationCommand}"
+                                    Content="자동화 실행"
+                                    Padding="20,9" />
+                        </StackPanel>
                         <StackPanel>
                             <TextBlock Text="실행 로그"
                                        FontSize="18"

@@ -8,6 +8,8 @@ public sealed class AutomationSettings
 
     public int RemoteDebuggingPort { get; set; } = 9222;
 
+    public int StepTimeoutSeconds { get; set; } = 12;
+
     public string DebugEndpoint => $"http://127.0.0.1:{RemoteDebuggingPort}";
 
     public AutomationSettings Clone()
@@ -16,7 +18,8 @@ public sealed class AutomationSettings
         {
             ChromePath = ChromePath,
             ChromeProfileDirectory = ChromeProfileDirectory,
-            RemoteDebuggingPort = RemoteDebuggingPort
+            RemoteDebuggingPort = RemoteDebuggingPort,
+            StepTimeoutSeconds = StepTimeoutSeconds
         };
     }
 }

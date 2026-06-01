@@ -28,6 +28,7 @@ public sealed class AutomationRunLogService
         builder.AppendLine($"예상 세액: {input.TaxAmountText}");
         builder.AppendLine($"Chrome 디버깅 주소: {settings.DebugEndpoint}");
         builder.AppendLine($"Chrome 프로필: {settings.ChromeProfileDirectory}");
+        builder.AppendLine($"단계 대기 시간: {settings.StepTimeoutSeconds}초");
         builder.AppendLine(new string('-', 80));
 
         File.WriteAllText(path, builder.ToString());

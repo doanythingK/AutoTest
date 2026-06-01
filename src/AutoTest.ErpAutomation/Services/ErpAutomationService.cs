@@ -7,7 +7,6 @@ namespace AutoTest.ErpAutomation.Services;
 public sealed class ErpAutomationService
 {
     private const string LoginUrl = "https://ibcenter.co.kr/erp/erp/erplogin/erplogin_dispatch.jsp";
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(12);
 
     public async Task RunAsync(
         AutomationInput input,
@@ -15,13 +14,15 @@ public sealed class ErpAutomationService
         IProgress<AutomationProgress> progress,
         CancellationToken cancellationToken)
     {
+        var stepTimeout = TimeSpan.FromSeconds(settings.StepTimeoutSeconds);
+
         using var playwright = await Playwright.CreateAsync();
         var browser = await playwright.Chromium.ConnectOverCDPAsync(settings.DebugEndpoint);
         var context = browser.Contexts.FirstOrDefault()
             ?? throw new InvalidOperationException("연결된 Chrome 컨텍스트를 찾을 수 없습니다.");
 
         var page = await GetOrCreatePageAsync(context);
-        page.SetDefaultTimeout((float)DefaultTimeout.TotalMilliseconds);
+        page.SetDefaultTimeout((float)stepTimeout.TotalMilliseconds);
 
         try
         {
@@ -30,7 +31,7 @@ public sealed class ErpAutomationService
                 await page.GotoAsync(LoginUrl, new PageGotoOptions
                 {
                     WaitUntil = WaitUntilState.DOMContentLoaded,
-                    Timeout = (float)DefaultTimeout.TotalMilliseconds
+                    Timeout = (float)stepTimeout.TotalMilliseconds
                 });
             });
 
@@ -38,58 +39,58 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[04/30] 로그인 버튼만 클릭합니다.", async () =>
             {
-                await ClickTextAsync(page, "로그인", cancellationToken);
+                await ClickTextAsync(page, "로그인", stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, "[05/30] 로그인 성공 여부를 확인합니다.", async () =>
             {
-                await WaitUntilAnyTextAsync(page, new[] { "회계관리", "로그아웃", "ERP" }, cancellationToken);
+                await WaitUntilAnyTextAsync(page, new[] { "회계관리", "로그아웃", "ERP" }, stepTimeout, cancellationToken);
             });
 
             progress.Report(AutomationProgress.Info("[06/30] 로그인된 탭은 닫지 않고 유지합니다."));
 
-            await StepAsync(progress, "[07/30] 회계관리 버튼을 클릭합니다.", () => ClickTextAsync(page, "회계관리", cancellationToken));
-            await StepAsync(progress, "[08/30] 거래전표 메뉴를 펼칩니다.", () => ClickTextAsync(page, "거래전표", cancellationToken));
-            await StepAsync(progress, "[09/30] 거래전표(매출등록) 메뉴를 펼칩니다.", () => ClickTextAsync(page, "거래전표(매출등록)", cancellationToken));
-            await StepAsync(progress, "[10/30] 원화 버튼을 클릭합니다.", () => ClickTextAsync(page, "원화", cancellationToken));
+            await StepAsync(progress, "[07/30] 회계관리 버튼을 클릭합니다.", () => ClickTextAsync(page, "회계관리", stepTimeout, cancellationToken));
+            await StepAsync(progress, "[08/30] 거래전표 메뉴를 펼칩니다.", () => ClickTextAsync(page, "거래전표", stepTimeout, cancellationToken));
+            await StepAsync(progress, "[09/30] 거래전표(매출등록) 메뉴를 펼칩니다.", () => ClickTextAsync(page, "거래전표(매출등록)", stepTimeout, cancellationToken));
+            await StepAsync(progress, "[10/30] 원화 버튼을 클릭합니다.", () => ClickTextAsync(page, "원화", stepTimeout, cancellationToken));
 
             await StepAsync(progress, $"[11/30] 거래일자에 {input.TransactionDateText} 값을 입력합니다.", () =>
-                FillNearLabelAsync(page, "거래일자", input.TransactionDateText, pressEnter: false, cancellationToken));
+                FillNearLabelAsync(page, "거래일자", input.TransactionDateText, pressEnter: false, stepTimeout, cancellationToken));
 
             await StepAsync(progress, "[12/30] 차변에서 외상매출금 [1141]을 선택합니다.", async () =>
             {
-                await SelectByLabelAsync(page, "차변", "외상매출금", cancellationToken);
-                await ClickTextAsync(page, "외상매출금", cancellationToken);
+                await SelectByLabelAsync(page, "차변", "외상매출금", stepTimeout, cancellationToken);
+                await ClickTextAsync(page, "외상매출금", stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, "[13/30] 매출구분에서 서비스(사회및개인)업 폐차처리업을 선택합니다.", async () =>
             {
-                await SelectByLabelAsync(page, "매출구분", "서비스(사회및개인)업 폐차처리업", cancellationToken);
-                await ClickTextAsync(page, "서비스(사회및개인)업 폐차처리업", cancellationToken);
+                await SelectByLabelAsync(page, "매출구분", "서비스(사회및개인)업 폐차처리업", stepTimeout, cancellationToken);
+                await ClickTextAsync(page, "서비스(사회및개인)업 폐차처리업", stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, $"[14/30] 거래처코드/명에 {input.ClientCode} 값을 입력하고 Enter를 실행합니다.", () =>
-                FillNearLabelAsync(page, "거래처코드/명", input.ClientCode, pressEnter: true, cancellationToken));
+                FillNearLabelAsync(page, "거래처코드/명", input.ClientCode, pressEnter: true, stepTimeout, cancellationToken));
 
             await StepAsync(progress, "[15/30] 담당부서에 20을 입력하고 Enter를 실행합니다.", () =>
-                FillNearLabelAsync(page, "담당부서", "20", pressEnter: true, cancellationToken));
+                FillNearLabelAsync(page, "담당부서", "20", pressEnter: true, stepTimeout, cancellationToken));
 
             await StepAsync(progress, "[16/30] 전자(세금)계산서 발송구분에서 국세청HTS를 선택합니다.", async () =>
             {
-                await SelectByLabelAsync(page, "전자(세금)계산서 발송구분", "국세청HTS", cancellationToken);
-                await ClickTextAsync(page, "국세청HTS", cancellationToken);
+                await SelectByLabelAsync(page, "전자(세금)계산서 발송구분", "국세청HTS", stepTimeout, cancellationToken);
+                await ClickTextAsync(page, "국세청HTS", stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, $"[17/30] 품목코드/품목명(적요)에 {AutomationInput.ItemText}를 입력합니다.", () =>
-                FillNearLabelAsync(page, "품목코드/품목명(적요)", AutomationInput.ItemText, pressEnter: false, cancellationToken));
+                FillNearLabelAsync(page, "품목코드/품목명(적요)", AutomationInput.ItemText, pressEnter: false, stepTimeout, cancellationToken));
 
             await StepAsync(progress, $"[18/30] 수량에 {input.QuantityText} 값을 입력합니다.", () =>
-                FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, cancellationToken));
+                FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, stepTimeout, cancellationToken));
 
             await StepAsync(progress, $"[19/30] 단가에 {input.UnitPriceText} 값을 입력합니다.", () =>
-                FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, cancellationToken));
+                FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, stepTimeout, cancellationToken));
 
-            await StepAsync(progress, "[20/30] 계산 버튼을 클릭합니다.", () => ClickTextAsync(page, "계산", cancellationToken));
+            await StepAsync(progress, "[20/30] 계산 버튼을 클릭합니다.", () => ClickTextAsync(page, "계산", stepTimeout, cancellationToken));
 
             await StepAsync(progress, "[21/30] 계산 결과가 정상 반영되었는지 확인합니다.", async () =>
             {
@@ -98,16 +99,16 @@ public sealed class ErpAutomationService
                 if (hasZeroAmount || !ok)
                 {
                     progress.Report(AutomationProgress.Warning("공급가액/세액이 0이거나 기대값을 찾지 못했습니다. 수량과 단가를 다시 입력한 뒤 계산을 재시도합니다."));
-                    await FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, cancellationToken);
-                    await FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, cancellationToken);
-                    await ClickTextAsync(page, "계산", cancellationToken);
+                    await FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, stepTimeout, cancellationToken);
+                    await FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, stepTimeout, cancellationToken);
+                    await ClickTextAsync(page, "계산", stepTimeout, cancellationToken);
                 }
 
-                await WaitUntilAllGroupsAsync(page, input.CalculationResultGroups, cancellationToken);
+                await WaitUntilAllGroupsAsync(page, input.CalculationResultGroups, stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, $"[22/30] 계정코드(대변)에 {input.CreditAccountCode} 값을 입력하고 Enter를 실행합니다.", () =>
-                FillNearLabelAsync(page, "계정코드(대변)", input.CreditAccountCode, pressEnter: true, cancellationToken));
+                FillNearLabelAsync(page, "계정코드(대변)", input.CreditAccountCode, pressEnter: true, stepTimeout, cancellationToken));
 
             await StepAsync(progress, "[23/30] 라인저장 전 입력값과 계산 결과를 확인한 뒤 라인저장(L) 버튼을 클릭합니다.", async () =>
             {
@@ -119,21 +120,22 @@ public sealed class ErpAutomationService
                         input.SupplyAmountCandidates,
                         input.TaxAmountCandidates
                     },
+                    stepTimeout,
                     cancellationToken);
-                await ClickTextAsync(page, "라인저장", cancellationToken);
+                await ClickTextAsync(page, "라인저장", stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, "[24/30] 라인 목록 반영 여부를 확인합니다.", async () =>
             {
-                await WaitUntilAllGroupsAsync(page, input.LineResultGroups, cancellationToken);
+                await WaitUntilAllGroupsAsync(page, input.LineResultGroups, stepTimeout, cancellationToken);
             });
 
-            await StepAsync(progress, "[25/30] 거래전기[S] 버튼을 클릭합니다.", () => ClickTextAsync(page, "거래전기", cancellationToken));
-            await StepAsync(progress, "[26/30] 화면이 전기 완료 상태로 바뀌었는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "전기 완료", "전기완료", "완료" }, cancellationToken));
-            await StepAsync(progress, "[27/30] 회계전표 동일자생성 버튼을 클릭합니다.", () => ClickTextAsync(page, "회계전표 동일자생성", cancellationToken));
-            await StepAsync(progress, "[28/30] 회계전표입력 화면으로 이동했는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "회계전표입력", "회계전표 입력" }, cancellationToken));
-            await StepAsync(progress, "[29/30] 원장전기[P] 버튼을 클릭합니다.", () => ClickTextAsync(page, "원장전기", cancellationToken));
-            await StepAsync(progress, "[30/30] 원장전기 완료 상태가 표시되는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "원장전기: 완료", "원장전기 완료", "완료" }, cancellationToken));
+            await StepAsync(progress, "[25/30] 거래전기[S] 버튼을 클릭합니다.", () => ClickTextAsync(page, "거래전기", stepTimeout, cancellationToken));
+            await StepAsync(progress, "[26/30] 화면이 전기 완료 상태로 바뀌었는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "전기 완료", "전기완료", "완료" }, stepTimeout, cancellationToken));
+            await StepAsync(progress, "[27/30] 회계전표 동일자생성 버튼을 클릭합니다.", () => ClickTextAsync(page, "회계전표 동일자생성", stepTimeout, cancellationToken));
+            await StepAsync(progress, "[28/30] 회계전표입력 화면으로 이동했는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "회계전표입력", "회계전표 입력" }, stepTimeout, cancellationToken));
+            await StepAsync(progress, "[29/30] 원장전기[P] 버튼을 클릭합니다.", () => ClickTextAsync(page, "원장전기", stepTimeout, cancellationToken));
+            await StepAsync(progress, "[30/30] 원장전기 완료 상태가 표시되는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "원장전기: 완료", "원장전기 완료", "완료" }, stepTimeout, cancellationToken));
 
             progress.Report(AutomationProgress.Info("ERP 매출등록 자동화 절차가 완료되었습니다."));
         }
@@ -166,24 +168,24 @@ public sealed class ErpAutomationService
         }
     }
 
-    private static Task ClickTextAsync(IPage page, string text, CancellationToken cancellationToken)
+    private static Task ClickTextAsync(IPage page, string text, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        return RunInAnyFrameAsync(page, frame => ClickTextInFrameAsync(frame, text), $"'{text}' 클릭", cancellationToken);
+        return RunInAnyFrameAsync(page, frame => ClickTextInFrameAsync(frame, text), $"'{text}' 클릭", timeout, cancellationToken);
     }
 
-    private static Task FillNearLabelAsync(IPage page, string label, string value, bool pressEnter, CancellationToken cancellationToken)
+    private static Task FillNearLabelAsync(IPage page, string label, string value, bool pressEnter, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        return RunInAnyFrameAsync(page, frame => FillNearLabelInFrameAsync(frame, label, value, pressEnter), $"'{label}' 입력", cancellationToken);
+        return RunInAnyFrameAsync(page, frame => FillNearLabelInFrameAsync(frame, label, value, pressEnter), $"'{label}' 입력", timeout, cancellationToken);
     }
 
-    private static Task SelectByLabelAsync(IPage page, string label, string optionText, CancellationToken cancellationToken)
+    private static Task SelectByLabelAsync(IPage page, string label, string optionText, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        return RunInAnyFrameAsync(page, frame => SelectByLabelInFrameAsync(frame, label, optionText), $"'{label}' 선택", cancellationToken);
+        return RunInAnyFrameAsync(page, frame => SelectByLabelInFrameAsync(frame, label, optionText), $"'{label}' 선택", timeout, cancellationToken);
     }
 
-    private static async Task WaitUntilAnyTextAsync(IPage page, IReadOnlyCollection<string> texts, CancellationToken cancellationToken)
+    private static async Task WaitUntilAnyTextAsync(IPage page, IReadOnlyCollection<string> texts, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        var deadline = DateTime.UtcNow.Add(DefaultTimeout);
+        var deadline = DateTime.UtcNow.Add(timeout);
         while (DateTime.UtcNow < deadline)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -201,9 +203,10 @@ public sealed class ErpAutomationService
     private static async Task WaitUntilAllGroupsAsync(
         IPage page,
         IReadOnlyCollection<IReadOnlyCollection<string>> groups,
+        TimeSpan timeout,
         CancellationToken cancellationToken)
     {
-        var deadline = DateTime.UtcNow.Add(DefaultTimeout);
+        var deadline = DateTime.UtcNow.Add(timeout);
         while (DateTime.UtcNow < deadline)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -346,9 +349,10 @@ public sealed class ErpAutomationService
         IPage page,
         Func<IFrame, Task<bool>> action,
         string description,
+        TimeSpan timeout,
         CancellationToken cancellationToken)
     {
-        var deadline = DateTime.UtcNow.Add(DefaultTimeout);
+        var deadline = DateTime.UtcNow.Add(timeout);
         while (DateTime.UtcNow < deadline)
         {
             cancellationToken.ThrowIfCancellationRequested();

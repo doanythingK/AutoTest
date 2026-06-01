@@ -44,6 +44,9 @@ public partial class MainWindowViewModel : ObservableObject
     private string remoteDebuggingPortText = "9222";
 
     [ObservableProperty]
+    private string stepTimeoutSecondsText = "12";
+
+    [ObservableProperty]
     private string chromeStatus = "Chrome 연결을 확인하지 않았습니다.";
 
     [ObservableProperty]
@@ -72,6 +75,7 @@ public partial class MainWindowViewModel : ObservableObject
         ChromePath = settings.ChromePath;
         ChromeProfileDirectory = settings.ChromeProfileDirectory;
         RemoteDebuggingPortText = settings.RemoteDebuggingPort.ToString();
+        StepTimeoutSecondsText = settings.StepTimeoutSeconds.ToString();
     }
 
     public ObservableCollection<AutomationLogEntry> Logs { get; } = new();
@@ -235,6 +239,14 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         settings.RemoteDebuggingPort = port;
+
+        if (!int.TryParse(StepTimeoutSecondsText, out var timeoutSeconds) || timeoutSeconds < 3 || timeoutSeconds > 120)
+        {
+            error = "단계 대기 시간은 3부터 120 사이의 초 단위 숫자로 입력해야 합니다.";
+            return false;
+        }
+
+        settings.StepTimeoutSeconds = timeoutSeconds;
         error = string.Empty;
         return true;
     }

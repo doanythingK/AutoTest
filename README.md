@@ -19,7 +19,7 @@ Chrome 연결은 원격 디버깅 포트 `9222`를 기준으로 합니다.
 chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 ```
 
-프로그램의 `Chrome 연결 설정` 영역에서 Chrome 경로, 프로필 디렉터리, 원격 디버깅 포트를 변경할 수 있습니다. 설정은 아래 경로에 저장됩니다.
+프로그램의 `Chrome 연결 설정` 영역에서 Chrome 경로, 프로필 디렉터리, 원격 디버깅 포트, 단계 대기 시간을 변경할 수 있습니다. 설정은 아래 경로에 저장됩니다.
 
 ```text
 %LOCALAPPDATA%\AutoTest.ErpAutomation\settings.json
@@ -57,6 +57,7 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 - 로그인 아이디/비밀번호 입력 필드는 자동화 코드에서 채우지 않는다.
 - 자동화 실행 로그는 `%LOCALAPPDATA%\AutoTest.ErpAutomation\RunLogs`에 저장한다.
 - Chrome 연결 확인에 실패하면 ERP 페이지 이동 전에 자동화를 중단한다.
+- ERP 응답이 느린 환경에서는 `Chrome 연결 설정`의 단계 대기 시간 값을 늘릴 수 있다.
 - 계산 후 공급가액/세액 주변 값이 `0`으로 감지되면 수량과 단가를 다시 입력하고 계산을 재시도한다.
 - 자동화 실패 시 `%LOCALAPPDATA%\AutoTest.ErpAutomation\Failures`에 화면 PNG와 HTML을 저장한다.
 

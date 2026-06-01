@@ -57,6 +57,11 @@ public sealed class AutomationSettingsService
             settings.RemoteDebuggingPort = 9222;
         }
 
+        if (settings.StepTimeoutSeconds < 3 || settings.StepTimeoutSeconds > 120)
+        {
+            settings.StepTimeoutSeconds = 12;
+        }
+
         return settings;
     }
 }
