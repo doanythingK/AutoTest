@@ -1217,9 +1217,9 @@ public sealed class ErpAutomationService
         {
             Directory.CreateDirectory(FailureDirectory);
 
-            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            var screenshotPath = Path.Combine(FailureDirectory, $"erp_failure_{timestamp}.png");
-            var htmlPath = Path.Combine(FailureDirectory, $"erp_failure_{timestamp}.html");
+            var artifactPaths = CreateFailureArtifactPaths(DateTime.Now);
+            var screenshotPath = artifactPaths.ScreenshotPath;
+            var htmlPath = artifactPaths.HtmlPath;
 
             var title = await GetPageTitleAsync(page);
             progress.Report(AutomationProgress.Warning($"실패 당시 페이지: {title}"));
@@ -1256,6 +1256,30 @@ public sealed class ErpAutomationService
             progress.Report(AutomationProgress.Warning($"실패 자료 저장 준비 중 오류가 발생했습니다: {ex.Message}"));
         }
     }
+
+    private static FailureArtifactPaths CreateFailureArtifactPaths(DateTime timestamp)
+    {
+        var baseName = $"erp_failure_{timestamp:yyyyMMdd_HHmmss_fff}";
+        var suffix = 0;
+
+        while (true)
+        {
+            var name = suffix == 0
+                ? baseName
+                : $"{baseName}_{suffix}";
+            var screenshotPath = Path.Combine(FailureDirectory, $"{name}.png");
+            var htmlPath = Path.Combine(FailureDirectory, $"{name}.html");
+
+            if (!File.Exists(screenshotPath) && !File.Exists(htmlPath))
+            {
+                return new FailureArtifactPaths(screenshotPath, htmlPath);
+            }
+
+            suffix++;
+        }
+    }
+
+    private sealed record FailureArtifactPaths(string ScreenshotPath, string HtmlPath);
 
     private static async Task<string> GetPageTitleAsync(IPage page)
     {
