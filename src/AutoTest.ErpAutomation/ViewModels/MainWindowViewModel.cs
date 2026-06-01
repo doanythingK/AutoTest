@@ -70,6 +70,9 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RunAutomationCommand))]
     [NotifyCanExecuteChangedFor(nameof(CancelAutomationCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CheckChromeCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StartChromeCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveSettingsCommand))]
     private bool isRunning;
 
     public MainWindowViewModel(
@@ -106,7 +109,7 @@ public partial class MainWindowViewModel : ObservableObject
         ? "입력값 확인 완료"
         : error;
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanUseIdleCommands))]
     private async Task CheckChromeAsync()
     {
         if (!TryCreateSettings(out var settings, out var error))
@@ -132,7 +135,7 @@ public partial class MainWindowViewModel : ObservableObject
         StatusMessage = "Chrome 연결 필요";
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanUseIdleCommands))]
     private async Task StartChromeAsync()
     {
         if (!TryCreateSettings(out var settings, out var error))
@@ -168,7 +171,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanUseIdleCommands))]
     private void SaveSettings()
     {
         if (!TryCreateSettings(out var settings, out var error))
@@ -321,6 +324,11 @@ public partial class MainWindowViewModel : ObservableObject
     private bool CanCancelAutomation()
     {
         return IsRunning;
+    }
+
+    private bool CanUseIdleCommands()
+    {
+        return !IsRunning;
     }
 
     private void OnAutomationProgress(AutomationProgress progress)
