@@ -9,10 +9,12 @@
     <AssemblyName>AutoTest.ErpAutomation</AssemblyName>
     <RootNamespace>AutoTest.ErpAutomation</RootNamespace>
     <Version>0.1.0</Version>
-    <InformationalVersion>0.1.0</InformationalVersion>
+    <InformationalVersion Condition="'$(SourceRevisionId)' == ''">0.1.0</InformationalVersion>
+    <InformationalVersion Condition="'$(SourceRevisionId)' != ''">0.1.0+$(SourceRevisionId)</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>
+    <AssemblyMetadata Include="SourceRevisionId" Value="$(SourceRevisionId)" Condition="'$(SourceRevisionId)' != ''" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Microsoft.Playwright" Version="1.52.0" />
   </ItemGroup>

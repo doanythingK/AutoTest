@@ -30,6 +30,16 @@ public static class AppBuildInfoService
             return ShortenRevision(environmentRevision);
         }
 
+        var assemblyRevision = typeof(AppBuildInfoService).Assembly
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attribute => string.Equals(attribute.Key, "SourceRevisionId", StringComparison.OrdinalIgnoreCase))
+            ?.Value;
+
+        if (!string.IsNullOrWhiteSpace(assemblyRevision))
+        {
+            return ShortenRevision(assemblyRevision);
+        }
+
         return TryReadGitRevision(AppContext.BaseDirectory)
             ?? TryReadGitRevision(Directory.GetCurrentDirectory())
             ?? "(알 수 없음)";

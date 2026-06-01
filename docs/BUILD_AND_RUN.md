@@ -18,6 +18,8 @@ WSL에서는 WPF 앱이 직접 실행되지 않는다. Windows 터미널이나 P
 .\scripts\publish-windows.ps1
 ```
 
+스크립트는 현재 Git 커밋을 빌드 메타데이터에 넣는다. 게시 폴더만 다른 위치로 옮겨 실행해도 실행 로그와 실패 HTML의 `소스 커밋` 값으로 어떤 빌드인지 확인할 수 있다.
+
 스크립트가 실행하는 게시 명령은 아래와 같다.
 
 ```powershell
@@ -29,6 +31,18 @@ dotnet publish .\src\AutoTest.ErpAutomation\AutoTest.ErpAutomation.csproj -c Rel
 ```text
 publish\AutoTest.ErpAutomation\AutoTest.ErpAutomation.exe
 ```
+
+## GitHub Actions 게시 파일
+
+`main` 브랜치에 푸시하거나 GitHub Actions에서 `Windows Release Build` 워크플로를 수동 실행하면 Windows `Release` 빌드를 만든다.
+
+워크플로 결과 파일:
+
+```text
+AutoTest.ErpAutomation-win-x64.zip
+```
+
+해당 zip은 Actions artifact로 업로드된다. 다운로드 후 압축을 풀고 `AutoTest.ErpAutomation.exe`를 실행한다.
 
 ## 운영 PC 실행 전 확인
 

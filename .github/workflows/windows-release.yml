@@ -1,0 +1,51 @@
+name: Windows Release Build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Publish Windows Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish win-x64 Release
+        shell: pwsh
+        run: |
+          .\scripts\publish-windows.ps1 `
+            -Configuration Release `
+            -Runtime win-x64 `
+            -Output .\publish\AutoTest.ErpAutomation
+
+      - name: Package artifact
+        shell: pwsh
+        run: |
+          $zipPath = ".\publish\AutoTest.ErpAutomation-win-x64.zip"
+          if (Test-Path $zipPath) {
+            Remove-Item $zipPath -Force
+          }
+          Compress-Archive `
+            -Path ".\publish\AutoTest.ErpAutomation\*" `
+            -DestinationPath $zipPath `
+            -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoTest.ErpAutomation-win-x64
+          path: publish/AutoTest.ErpAutomation-win-x64.zip
+          if-no-files-found: error
+          retention-days: 14
