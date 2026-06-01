@@ -168,7 +168,7 @@ public sealed class ErpAutomationService
         return RunInAnyFrameAsync(page, frame => ClickTextInFrameAsync(frame, text), $"'{text}' 클릭", timeout, cancellationToken);
     }
 
-    private static Task FillNearLabelAsync(
+    private static async Task FillNearLabelAsync(
         IPage page,
         string label,
         string value,
@@ -178,12 +178,18 @@ public sealed class ErpAutomationService
         bool preferLowerArea = false,
         bool preferWideControl = false)
     {
-        return RunInAnyFrameAsync(
+        await RunInAnyFrameAsync(
             page,
-            frame => FillNearLabelInFrameAsync(frame, label, value, pressEnter, preferLowerArea, preferWideControl),
+            frame => FillNearLabelInFrameAsync(frame, label, value, preferLowerArea, preferWideControl),
             $"'{label}' 입력",
             timeout,
             cancellationToken);
+
+        if (pressEnter)
+        {
+            await page.Keyboard.PressAsync("Enter");
+            await Task.Delay(200, cancellationToken);
+        }
     }
 
     private static Task SelectByLabelAsync(IPage page, string label, string optionText, TimeSpan timeout, CancellationToken cancellationToken)
@@ -573,12 +579,11 @@ public sealed class ErpAutomationService
         IFrame frame,
         string label,
         string value,
-        bool pressEnter,
         bool preferLowerArea,
         bool preferWideControl)
     {
         return frame.EvaluateAsync<bool>(
-            @"({ label, value, pressEnter, preferLowerArea, preferWideControl }) => {
+            @"({ label, value, preferLowerArea, preferWideControl }) => {
                 const normalize = item => (item || '').replace(/\s+/g, ' ').trim();
                 const normalizeKey = item => normalize(item).replace(/[\s()[\]{}<>\/\\:_-]/g, '');
                 const targetKey = normalizeKey(label);
@@ -603,11 +608,6 @@ public sealed class ErpAutomationService
                     }
                     control.dispatchEvent(new Event('input', { bubbles: true }));
                     control.dispatchEvent(new Event('change', { bubbles: true }));
-                    if (pressEnter) {
-                        control.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
-                        control.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', bubbles: true }));
-                        control.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }));
-                    }
                     return true;
                 };
                 const scoreControl = (control, labelRect) => {
@@ -639,7 +639,7 @@ public sealed class ErpAutomationService
                 }
                 return false;
             }",
-            new { label, value, pressEnter, preferLowerArea, preferWideControl });
+            new { label, value, preferLowerArea, preferWideControl });
     }
 
     private static Task<bool> SelectNativeByLabelInFrameAsync(IFrame frame, string label, string optionText)
