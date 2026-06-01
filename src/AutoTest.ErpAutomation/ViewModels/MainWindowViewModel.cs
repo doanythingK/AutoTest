@@ -19,20 +19,30 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ExpectedSupplyAmountText))]
     [NotifyPropertyChangedFor(nameof(ExpectedTaxAmountText))]
+    [NotifyPropertyChangedFor(nameof(InputStatusText))]
+    [NotifyCanExecuteChangedFor(nameof(RunAutomationCommand))]
     private string quantityText = "15000";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ExpectedSupplyAmountText))]
     [NotifyPropertyChangedFor(nameof(ExpectedTaxAmountText))]
+    [NotifyPropertyChangedFor(nameof(InputStatusText))]
+    [NotifyCanExecuteChangedFor(nameof(RunAutomationCommand))]
     private string unitPriceText = "275";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(InputStatusText))]
+    [NotifyCanExecuteChangedFor(nameof(RunAutomationCommand))]
     private string clientCode = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(InputStatusText))]
+    [NotifyCanExecuteChangedFor(nameof(RunAutomationCommand))]
     private string creditAccountCode = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(InputStatusText))]
+    [NotifyCanExecuteChangedFor(nameof(RunAutomationCommand))]
     private DateTime? transactionDate = DateTime.Today;
 
     [ObservableProperty]
@@ -90,6 +100,10 @@ public partial class MainWindowViewModel : ObservableObject
     public string ExpectedTaxAmountText => TryCreateInput(out var input)
         ? input.TaxAmountText
         : "-";
+
+    public string InputStatusText => TryCreateInput(out _, out var error)
+        ? "입력값 확인 완료"
+        : error;
 
     [RelayCommand]
     private async Task CheckChromeAsync()
@@ -268,7 +282,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     private bool CanRunAutomation()
     {
-        return !IsRunning;
+        return !IsRunning && TryCreateInput(out _);
     }
 
     [RelayCommand(CanExecute = nameof(CanCancelAutomation))]

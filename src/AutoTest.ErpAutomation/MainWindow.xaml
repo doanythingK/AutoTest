@@ -121,6 +121,10 @@
                                        Margin="0,8,0,0" />
                             <TextBlock Text="{Binding ExpectedTaxAmountText, StringFormat=세액: {0}}"
                                        Margin="0,4,0,0" />
+                            <TextBlock Text="{Binding InputStatusText}"
+                                       Foreground="#5D6B78"
+                                       Margin="0,8,0,0"
+                                       TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
 

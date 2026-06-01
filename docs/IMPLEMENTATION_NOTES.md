@@ -6,6 +6,7 @@
 - `MainWindowViewModel`: `CommunityToolkit.Mvvm` 기반 ViewModel.
   - `[ObservableProperty]`로 입력값과 상태를 관리한다.
   - `[RelayCommand]`로 Chrome 확인, Chrome 실행, 자동화 실행, 중지를 처리한다.
+  - 수량, 단가, 거래처코드, 계정코드가 유효할 때만 자동화 실행 명령을 활성화한다.
 - `AutomationInput`: 입력값 검증과 예상 공급가액/세액 계산을 담당한다.
 - `ChromeConnectionService`: Chrome 원격 디버깅 포트 `9222` 연결 확인과 Chrome 실행을 담당한다.
 - `AutomationSettingsService`: Chrome 경로, 프로필 디렉터리, 원격 디버깅 포트, 단계 대기 시간을 `%LOCALAPPDATA%\AutoTest.ErpAutomation\settings.json`에 저장하고 불러온다.
