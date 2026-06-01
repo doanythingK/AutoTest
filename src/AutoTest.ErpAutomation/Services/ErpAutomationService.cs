@@ -31,6 +31,18 @@ public sealed class ErpAutomationService
 
         var page = await GetOrCreatePageAsync(context);
         page.SetDefaultTimeout((float)stepTimeout.TotalMilliseconds);
+        var lastAutomationStep = string.Empty;
+        var originalProgress = progress;
+        progress = new Progress<AutomationProgress>(entry =>
+        {
+            if (entry.Level == AutomationLogLevel.Info && IsAutomationStepMessage(entry.Message))
+            {
+                lastAutomationStep = entry.Message;
+            }
+
+            originalProgress.Report(entry);
+        });
+
         var dialogHandlers = new List<(IPage Page, EventHandler<IDialog> Handler)>();
         AttachDialogHandler(page, progress, dialogHandlers);
         var loginSuccessTexts = new[] { "회계관리", "로그아웃" };
@@ -238,9 +250,9 @@ public sealed class ErpAutomationService
 
             progress.Report(AutomationProgress.Info("ERP 매출등록 자동화 절차가 완료되었습니다."));
         }
-        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            await SaveFailureArtifactsAsync(page, input, progress);
+            await SaveFailureArtifactsAsync(page, input, lastAutomationStep, ex, progress);
             throw;
         }
         finally
@@ -299,6 +311,18 @@ public sealed class ErpAutomationService
             progress.Report(AutomationProgress.Error($"{message} 실패: {ex.Message}"));
             throw;
         }
+    }
+
+    private static bool IsAutomationStepMessage(string message)
+    {
+        return message.Length >= 7
+            && message[0] == '['
+            && char.IsDigit(message[1])
+            && char.IsDigit(message[2])
+            && message[3] == '/'
+            && char.IsDigit(message[4])
+            && char.IsDigit(message[5])
+            && message[6] == ']';
     }
 
     private static async Task ClickTextAsync(
@@ -1770,7 +1794,12 @@ public sealed class ErpAutomationService
             labels);
     }
 
-    private static async Task SaveFailureArtifactsAsync(IPage page, AutomationInput input, IProgress<AutomationProgress> progress)
+    private static async Task SaveFailureArtifactsAsync(
+        IPage page,
+        AutomationInput input,
+        string lastAutomationStep,
+        Exception failure,
+        IProgress<AutomationProgress> progress)
     {
         try
         {
@@ -1781,6 +1810,8 @@ public sealed class ErpAutomationService
             var htmlPath = artifactPaths.HtmlPath;
 
             var title = await GetPageTitleAsync(page);
+            progress.Report(AutomationProgress.Warning($"실패 단계: {FormatFailureStep(lastAutomationStep)}"));
+            progress.Report(AutomationProgress.Warning($"실패 메시지: {failure.Message}"));
             progress.Report(AutomationProgress.Warning($"실패 당시 페이지: {title}"));
             progress.Report(AutomationProgress.Warning($"실패 당시 URL: {page.Url}"));
             progress.Report(AutomationProgress.Warning($"실패 입력값: 거래일자 {input.TransactionDateText}, 수량 {input.QuantityText}, 단가 {input.UnitPriceText}"));
@@ -1812,7 +1843,7 @@ public sealed class ErpAutomationService
 
             try
             {
-                await File.WriteAllTextAsync(htmlPath, await BuildFailureHtmlAsync(page, input));
+                await File.WriteAllTextAsync(htmlPath, await BuildFailureHtmlAsync(page, input, lastAutomationStep, failure));
 
                 progress.Report(AutomationProgress.Warning($"실패 HTML을 저장했습니다: {htmlPath}"));
             }
@@ -1825,6 +1856,13 @@ public sealed class ErpAutomationService
         {
             progress.Report(AutomationProgress.Warning($"실패 자료 저장 준비 중 오류가 발생했습니다: {ex.Message}"));
         }
+    }
+
+    private static string FormatFailureStep(string lastAutomationStep)
+    {
+        return string.IsNullOrWhiteSpace(lastAutomationStep)
+            ? "(단계 정보 없음)"
+            : lastAutomationStep;
     }
 
     private static FailureArtifactPaths CreateFailureArtifactPaths(DateTime timestamp)
@@ -1953,13 +1991,23 @@ public sealed class ErpAutomationService
         }
     }
 
-    private static async Task<string> BuildFailureHtmlAsync(IPage page, AutomationInput input)
+    private static async Task<string> BuildFailureHtmlAsync(
+        IPage page,
+        AutomationInput input,
+        string lastAutomationStep,
+        Exception failure)
     {
         var builder = new StringBuilder();
         builder.AppendLine("<!doctype html>");
         builder.AppendLine("<html><head><meta charset=\"utf-8\"><title>ERP automation failure frames</title></head><body>");
         builder.AppendLine("<h1>ERP automation failure frames</h1>");
         builder.AppendLine($"<p>Captured at {WebUtility.HtmlEncode(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))}</p>");
+        builder.AppendLine("<h2>Failure summary</h2>");
+        builder.AppendLine("<dl>");
+        builder.AppendLine($"<dt>Last automation step</dt><dd>{WebUtility.HtmlEncode(FormatFailureStep(lastAutomationStep))}</dd>");
+        builder.AppendLine($"<dt>Error type</dt><dd>{WebUtility.HtmlEncode(failure.GetType().Name)}</dd>");
+        builder.AppendLine($"<dt>Error message</dt><dd>{WebUtility.HtmlEncode(failure.Message)}</dd>");
+        builder.AppendLine("</dl>");
         builder.AppendLine($"<p>Page title: {WebUtility.HtmlEncode(await GetPageTitleAsync(page))}</p>");
         builder.AppendLine($"<p>Page URL: {WebUtility.HtmlEncode(page.Url)}</p>");
         builder.AppendLine("<h2>Automation input</h2>");
