@@ -150,6 +150,8 @@ public partial class MainWindowViewModel : ObservableObject
 
         try
         {
+            AddInfo($"Chrome 실행 설정: 포트 {settings.RemoteDebuggingPort}, 프로필 {settings.ChromeProfileDirectory}, 단계 대기 {settings.StepTimeoutSeconds}초");
+            AddInfo($"Chrome 실행 명령: {_chromeConnectionService.BuildManualLaunchCommand(settings)}");
             _chromeConnectionService.StartChromeWithRemoteDebugging(settings);
             AddInfo($"Chrome을 원격 디버깅 포트 {settings.RemoteDebuggingPort}로 실행했습니다.");
             StatusMessage = "Chrome 연결 확인 중";
@@ -170,6 +172,7 @@ public partial class MainWindowViewModel : ObservableObject
         catch (Exception ex)
         {
             AddError(ex.Message);
+            AddChromeConnectionHelp(settings);
             StatusMessage = "Chrome 실행 실패";
         }
     }
@@ -438,7 +441,10 @@ public partial class MainWindowViewModel : ObservableObject
             await Task.Delay(500);
         }
 
-        return lastResult ?? ChromeConnectionResult.Fail($"Chrome 원격 디버깅 포트({settings.RemoteDebuggingPort})에 연결할 수 없습니다.");
+        var timeoutMessage = $"Chrome 연결 대기 시간이 초과되었습니다: 포트 {settings.RemoteDebuggingPort}, 대기 {timeout.TotalSeconds:0}초";
+        return lastResult is null
+            ? ChromeConnectionResult.Fail(timeoutMessage)
+            : ChromeConnectionResult.Fail($"{timeoutMessage}. 마지막 상태: {lastResult.Message}");
     }
 
     private void AddError(string message)

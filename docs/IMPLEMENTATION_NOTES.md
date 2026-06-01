@@ -8,7 +8,7 @@
   - `[RelayCommand]`로 Chrome 확인, Chrome 실행, 자동화 실행, 중지를 처리한다.
   - 수량, 단가, 거래처코드, 계정코드가 유효할 때만 자동화 실행 명령을 활성화한다.
 - `AutomationInput`: 입력값 검증과 예상 공급가액/세액 계산을 담당한다.
-- `ChromeConnectionService`: Chrome 원격 디버깅 포트 `9222` 연결 확인과 Chrome 실행을 담당하며, WPF의 Chrome 실행 명령은 실행 후 단계 대기 시간 동안 연결 상태를 반복 확인한다.
+- `ChromeConnectionService`: Chrome 원격 디버깅 포트 `9222` 연결 확인과 Chrome 실행을 담당하며, WPF의 Chrome 실행 명령은 실행 설정과 수동 실행 명령을 로그에 남긴 뒤 단계 대기 시간 동안 연결 상태를 반복 확인한다.
 - `AutomationSettingsService`: Chrome 경로, 프로필 디렉터리, 원격 디버깅 포트, 단계 대기 시간을 `%LOCALAPPDATA%\AutoTest.ErpAutomation\settings.json`에 저장하고 불러온다.
 - `AutomationRunLogService`: 자동화 실행 1회마다 입력값, 예상 계산값, 단계 로그를 `%LOCALAPPDATA%\AutoTest.ErpAutomation\RunLogs`에 저장한다.
 - `FolderOpenService`: 실행 로그 폴더, 최근 실행 로그 파일, 실패 자료 폴더, 최근 실패 HTML/PNG를 Windows 탐색기나 기본 연결 앱으로 연다.
