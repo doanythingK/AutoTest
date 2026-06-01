@@ -868,19 +868,35 @@ public sealed class ErpAutomationService
             var screenshotPath = Path.Combine(FailureDirectory, $"erp_failure_{timestamp}.png");
             var htmlPath = Path.Combine(FailureDirectory, $"erp_failure_{timestamp}.html");
 
-            await page.ScreenshotAsync(new PageScreenshotOptions
+            try
             {
-                Path = screenshotPath,
-                FullPage = true
-            });
-            await File.WriteAllTextAsync(htmlPath, await BuildFailureHtmlAsync(page));
+                await page.ScreenshotAsync(new PageScreenshotOptions
+                {
+                    Path = screenshotPath,
+                    FullPage = true
+                });
 
-            progress.Report(AutomationProgress.Warning($"실패 화면을 저장했습니다: {screenshotPath}"));
-            progress.Report(AutomationProgress.Warning($"실패 HTML을 저장했습니다: {htmlPath}"));
+                progress.Report(AutomationProgress.Warning($"실패 화면을 저장했습니다: {screenshotPath}"));
+            }
+            catch (Exception ex)
+            {
+                progress.Report(AutomationProgress.Warning($"실패 화면 저장 실패: {ex.Message}"));
+            }
+
+            try
+            {
+                await File.WriteAllTextAsync(htmlPath, await BuildFailureHtmlAsync(page));
+
+                progress.Report(AutomationProgress.Warning($"실패 HTML을 저장했습니다: {htmlPath}"));
+            }
+            catch (Exception ex)
+            {
+                progress.Report(AutomationProgress.Warning($"실패 HTML 저장 실패: {ex.Message}"));
+            }
         }
         catch (Exception ex)
         {
-            progress.Report(AutomationProgress.Warning($"실패 자료 저장 중 오류가 발생했습니다: {ex.Message}"));
+            progress.Report(AutomationProgress.Warning($"실패 자료 저장 준비 중 오류가 발생했습니다: {ex.Message}"));
         }
     }
 
