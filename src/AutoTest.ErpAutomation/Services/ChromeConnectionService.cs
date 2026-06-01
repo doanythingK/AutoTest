@@ -47,10 +47,7 @@ public sealed class ChromeConnectionService
 
     public Process StartChromeWithRemoteDebugging(AutomationSettings settings)
     {
-        var chromePath = !string.IsNullOrWhiteSpace(settings.ChromePath)
-            ? settings.ChromePath
-            : FindChromePath()
-            ?? throw new FileNotFoundException("Chrome 실행 파일을 찾을 수 없습니다.");
+        var chromePath = ResolveChromePath(settings);
 
         if (!File.Exists(chromePath))
         {
@@ -74,6 +71,42 @@ public sealed class ChromeConnectionService
         var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Chrome 실행에 실패했습니다.");
         return process;
+    }
+
+    public string BuildManualLaunchCommand(AutomationSettings settings)
+    {
+        var chromePath = !string.IsNullOrWhiteSpace(settings.ChromePath)
+            ? settings.ChromePath
+            : FindChromePath() ?? "chrome.exe";
+
+        var arguments = new List<string>
+        {
+            Quote(chromePath),
+            $"--remote-debugging-port={settings.RemoteDebuggingPort}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(settings.ChromeProfileDirectory))
+        {
+            arguments.Add($"--profile-directory={Quote(settings.ChromeProfileDirectory)}");
+        }
+
+        arguments.Add(Quote("https://ibcenter.co.kr/erp/erp/erplogin/erplogin_dispatch.jsp"));
+        return string.Join(" ", arguments);
+    }
+
+    private static string ResolveChromePath(AutomationSettings settings)
+    {
+        return !string.IsNullOrWhiteSpace(settings.ChromePath)
+            ? settings.ChromePath
+            : FindChromePath()
+            ?? throw new FileNotFoundException("Chrome 실행 파일을 찾을 수 없습니다.");
+    }
+
+    private static string Quote(string value)
+    {
+        return value.Contains(' ')
+            ? $"\"{value.Replace("\"", "\\\"")}\""
+            : value;
     }
 
     private static string? FindChromePath()

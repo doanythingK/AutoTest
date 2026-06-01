@@ -20,6 +20,7 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 ```
 
 기존 Chrome이 원격 디버깅 없이 이미 실행 중이면 포트 연결이 실패할 수 있다. 이 경우 Chrome을 모두 종료한 뒤 다시 실행한다.
+연결 확인에 실패하면 WPF 실행 로그에 같은 안내와 수동 실행 명령이 함께 표시된다.
 
 ## WPF 실행 순서
 

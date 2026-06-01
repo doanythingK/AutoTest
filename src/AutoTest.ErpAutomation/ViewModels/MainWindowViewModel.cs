@@ -127,6 +127,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         AddWarning(result.Message);
+        AddChromeConnectionHelp(settings);
         StatusMessage = "Chrome 연결 필요";
     }
 
@@ -157,6 +158,7 @@ public partial class MainWindowViewModel : ObservableObject
             }
 
             AddWarning(connection.Message);
+            AddChromeConnectionHelp(settings);
             StatusMessage = "Chrome 연결 필요";
         }
         catch (Exception ex)
@@ -233,6 +235,7 @@ public partial class MainWindowViewModel : ObservableObject
             if (!chromeConnection.IsConnected)
             {
                 AddWarning($"[01/30] {chromeConnection.Message}");
+                AddChromeConnectionHelp(settings);
                 StatusMessage = "Chrome 연결 필요";
                 return;
             }
@@ -358,6 +361,12 @@ public partial class MainWindowViewModel : ObservableObject
     private void AddWarning(string message)
     {
         AddLog("주의", message);
+    }
+
+    private void AddChromeConnectionHelp(AutomationSettings settings)
+    {
+        AddWarning("기존 Chrome이 원격 디버깅 없이 실행 중이면 모든 Chrome 창을 닫고 Chrome 실행을 다시 누르세요.");
+        AddInfo($"수동 실행 명령: {_chromeConnectionService.BuildManualLaunchCommand(settings)}");
     }
 
     private void AddError(string message)
