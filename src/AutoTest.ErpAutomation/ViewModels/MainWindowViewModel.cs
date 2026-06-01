@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using AutoTest.ErpAutomation.Models;
 using AutoTest.ErpAutomation.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -147,8 +148,7 @@ public partial class MainWindowViewModel : ObservableObject
             AddInfo($"Chrome을 원격 디버깅 포트 {settings.RemoteDebuggingPort}로 실행했습니다.");
             StatusMessage = "Chrome 연결 확인 중";
 
-            await Task.Delay(1200);
-            var connection = await _chromeConnectionService.CheckConnectionAsync(settings, CancellationToken.None);
+            var connection = await WaitForChromeConnectionAsync(settings, TimeSpan.FromSeconds(settings.StepTimeoutSeconds));
             ChromeStatus = connection.Message;
             if (connection.IsConnected)
             {
@@ -367,6 +367,26 @@ public partial class MainWindowViewModel : ObservableObject
     {
         AddWarning("기존 Chrome이 원격 디버깅 없이 실행 중이면 모든 Chrome 창을 닫고 Chrome 실행을 다시 누르세요.");
         AddInfo($"수동 실행 명령: {_chromeConnectionService.BuildManualLaunchCommand(settings)}");
+    }
+
+    private async Task<ChromeConnectionResult> WaitForChromeConnectionAsync(AutomationSettings settings, TimeSpan timeout)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        ChromeConnectionResult? lastResult = null;
+
+        while (stopwatch.Elapsed < timeout)
+        {
+            lastResult = await _chromeConnectionService.CheckConnectionAsync(settings, CancellationToken.None);
+            if (lastResult.IsConnected)
+            {
+                AddInfo($"Chrome 연결 확인 완료: {stopwatch.Elapsed.TotalSeconds:0.0}초");
+                return lastResult;
+            }
+
+            await Task.Delay(500);
+        }
+
+        return lastResult ?? ChromeConnectionResult.Fail($"Chrome 원격 디버깅 포트({settings.RemoteDebuggingPort})에 연결할 수 없습니다.");
     }
 
     private void AddError(string message)
