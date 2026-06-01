@@ -38,3 +38,4 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 - ERP 화면 구조가 바뀌거나 동일한 라벨이 여러 개 있으면 정확한 selector 보강이 필요하다.
 - 프로그램은 자동화 중 기존 Chrome 탭을 닫지 않는다.
 - 로그인 아이디/비밀번호 입력 필드는 자동화 코드에서 채우지 않는다.
+- 자동화 실패 시 `%LOCALAPPDATA%\AutoTest.ErpAutomation\Failures`에 화면 PNG와 HTML을 저장한다.

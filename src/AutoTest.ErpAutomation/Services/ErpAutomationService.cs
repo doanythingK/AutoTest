@@ -1,5 +1,6 @@
 using AutoTest.ErpAutomation.Models;
 using Microsoft.Playwright;
+using System.IO;
 
 namespace AutoTest.ErpAutomation.Services;
 
@@ -16,7 +17,7 @@ public sealed class ErpAutomationService
     {
         progress.Report(AutomationProgress.Info("Chrome CDP에 연결합니다."));
 
-        var playwright = await Playwright.CreateAsync();
+        using var playwright = await Playwright.CreateAsync();
         var browser = await playwright.Chromium.ConnectOverCDPAsync(ChromeConnectionService.DebugEndpoint);
         var context = browser.Contexts.FirstOrDefault()
             ?? throw new InvalidOperationException("연결된 Chrome 컨텍스트를 찾을 수 없습니다.");
@@ -24,6 +25,8 @@ public sealed class ErpAutomationService
         var page = await GetOrCreatePageAsync(context);
         page.SetDefaultTimeout((float)DefaultTimeout.TotalMilliseconds);
 
+        try
+        {
         await StepAsync(progress, "ERP 로그인 페이지에 접속합니다.", async () =>
         {
             await page.GotoAsync(LoginUrl, new PageGotoOptions
@@ -123,6 +126,12 @@ public sealed class ErpAutomationService
         await StepAsync(progress, "원장전기 완료 상태를 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "원장전기: 완료", "원장전기 완료", "완료" }, cancellationToken));
 
         progress.Report(AutomationProgress.Info("ERP 매출등록 자동화 절차가 완료되었습니다."));
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            await SaveFailureArtifactsAsync(page, progress);
+            throw;
+        }
     }
 
     private static async Task<IPage> GetOrCreatePageAsync(IBrowserContext context)
@@ -350,5 +359,35 @@ public sealed class ErpAutomationService
                 return false;
             }",
             new { label, optionText });
+    }
+
+    private static async Task SaveFailureArtifactsAsync(IPage page, IProgress<AutomationProgress> progress)
+    {
+        try
+        {
+            var failureDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "AutoTest.ErpAutomation",
+                "Failures");
+            Directory.CreateDirectory(failureDirectory);
+
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var screenshotPath = Path.Combine(failureDirectory, $"erp_failure_{timestamp}.png");
+            var htmlPath = Path.Combine(failureDirectory, $"erp_failure_{timestamp}.html");
+
+            await page.ScreenshotAsync(new PageScreenshotOptions
+            {
+                Path = screenshotPath,
+                FullPage = true
+            });
+            await File.WriteAllTextAsync(htmlPath, await page.ContentAsync());
+
+            progress.Report(AutomationProgress.Warning($"실패 화면을 저장했습니다: {screenshotPath}"));
+            progress.Report(AutomationProgress.Warning($"실패 HTML을 저장했습니다: {htmlPath}"));
+        }
+        catch (Exception ex)
+        {
+            progress.Report(AutomationProgress.Warning($"실패 자료 저장 중 오류가 발생했습니다: {ex.Message}"));
+        }
     }
 }
