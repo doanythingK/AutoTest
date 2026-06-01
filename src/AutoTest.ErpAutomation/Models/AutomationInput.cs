@@ -15,6 +15,15 @@ public sealed record AutomationInput(
 
     public string TransactionDateText => TransactionDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
+    public string TransactionDateDotText => TransactionDate.ToString("yyyy.MM.dd", CultureInfo.InvariantCulture);
+
+    public string TransactionDateCompactText => TransactionDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+
+    public IReadOnlyCollection<string> TransactionDateCandidates => Unique(
+        TransactionDateText,
+        TransactionDateDotText,
+        TransactionDateCompactText);
+
     public string QuantityText => FormatNumber(Quantity);
 
     public string QuantityPlainText => FormatPlainNumber(Quantity);

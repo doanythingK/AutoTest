@@ -61,8 +61,8 @@ public sealed class ErpAutomationService
             await StepAsync(progress, "[09/30] 거래전표(매출등록) 메뉴를 펼칩니다.", () => ClickTextAsync(page, "거래전표(매출등록)", stepTimeout, cancellationToken));
             await StepAsync(progress, "[10/30] 원화 버튼을 클릭합니다.", () => ClickTextAsync(page, "원화", stepTimeout, cancellationToken));
 
-            await StepAsync(progress, $"[11/30] 거래일자에 {input.TransactionDateText} 값을 입력합니다.", () =>
-                FillNearLabelAsync(page, "거래일자", input.TransactionDateText, pressEnter: false, stepTimeout, cancellationToken));
+            await StepAsync(progress, $"[11/30] 거래일자에 오늘 날짜({input.TransactionDateText})를 입력합니다.", () =>
+                FillNearLabelAsync(page, "거래일자", input.TransactionDateCandidates, pressEnter: false, stepTimeout, cancellationToken));
 
             await StepAsync(progress, "[12/30] 차변에서 외상매출금 [1141]을 선택합니다.", async () =>
             {
@@ -178,9 +178,22 @@ public sealed class ErpAutomationService
         bool preferLowerArea = false,
         bool preferWideControl = false)
     {
+        await FillNearLabelAsync(page, label, new[] { value }, pressEnter, timeout, cancellationToken, preferLowerArea, preferWideControl);
+    }
+
+    private static async Task FillNearLabelAsync(
+        IPage page,
+        string label,
+        IReadOnlyCollection<string> values,
+        bool pressEnter,
+        TimeSpan timeout,
+        CancellationToken cancellationToken,
+        bool preferLowerArea = false,
+        bool preferWideControl = false)
+    {
         await RunInAnyFrameAsync(
             page,
-            frame => FillNearLabelInFrameAsync(frame, label, value, preferLowerArea, preferWideControl),
+            frame => FillNearLabelInFrameAsync(frame, label, values, preferLowerArea, preferWideControl),
             $"'{label}' 입력",
             timeout,
             cancellationToken);
@@ -578,12 +591,12 @@ public sealed class ErpAutomationService
     private static Task<bool> FillNearLabelInFrameAsync(
         IFrame frame,
         string label,
-        string value,
+        IReadOnlyCollection<string> values,
         bool preferLowerArea,
         bool preferWideControl)
     {
         return frame.EvaluateAsync<bool>(
-            @"({ label, value, preferLowerArea, preferWideControl }) => {
+            @"({ label, values, preferLowerArea, preferWideControl }) => {
                 const normalize = item => (item || '').replace(/\s+/g, ' ').trim();
                 const normalizeKey = item => normalize(item).replace(/[\s()[\]{}<>\/\\:_-]/g, '');
                 const targetKey = normalizeKey(label);
@@ -597,8 +610,25 @@ public sealed class ErpAutomationService
                     const rect = element.getBoundingClientRect();
                     return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
                 };
+                const chooseValue = control => {
+                    const type = normalize(control.getAttribute('type')).toLowerCase();
+                    const hint = normalize([
+                        control.value,
+                        control.placeholder,
+                        control.getAttribute('data-format'),
+                        control.getAttribute('format'),
+                        control.getAttribute('maxlength')
+                    ].filter(Boolean).join(' '));
+                    const find = pattern => values.find(item => pattern.test(item)) || values[0];
+                    if (type === 'date') return find(/^\d{4}-\d{2}-\d{2}$/);
+                    if (hint.includes('.')) return find(/^\d{4}\.\d{2}\.\d{2}$/);
+                    if (hint.includes('-')) return find(/^\d{4}-\d{2}-\d{2}$/);
+                    if (control.maxLength === 8 || hint.includes('8')) return find(/^\d{8}$/);
+                    return values[0];
+                };
                 const controls = () => Array.from(document.querySelectorAll('input:not([type=hidden]), textarea, [contenteditable=true]')).filter(visible);
                 const setValue = control => {
+                    const value = chooseValue(control);
                     control.scrollIntoView({ block: 'center', inline: 'center' });
                     control.focus();
                     if (control.isContentEditable) {
@@ -639,7 +669,7 @@ public sealed class ErpAutomationService
                 }
                 return false;
             }",
-            new { label, value, preferLowerArea, preferWideControl });
+            new { label, values, preferLowerArea, preferWideControl });
     }
 
     private static Task<bool> SelectNativeByLabelInFrameAsync(IFrame frame, string label, string optionText)
