@@ -7,7 +7,6 @@ namespace AutoTest.ErpAutomation.Services;
 public sealed class ErpAutomationService
 {
     private const string LoginUrl = "https://ibcenter.co.kr/erp/erp/erplogin/erplogin_dispatch.jsp";
-    private const string ItemText = "차피 압축";
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(12);
 
     public async Task RunAsync(
@@ -83,8 +82,8 @@ public sealed class ErpAutomationService
                 await ClickTextAsync(page, "국세청HTS", cancellationToken);
             });
 
-            await StepAsync(progress, $"[17/30] 품목코드/품목명(적요)에 {ItemText}를 입력합니다.", () =>
-                FillNearLabelAsync(page, "품목코드/품목명(적요)", ItemText, pressEnter: false, cancellationToken));
+            await StepAsync(progress, $"[17/30] 품목코드/품목명(적요)에 {AutomationInput.ItemText}를 입력합니다.", () =>
+                FillNearLabelAsync(page, "품목코드/품목명(적요)", AutomationInput.ItemText, pressEnter: false, cancellationToken));
 
             await StepAsync(progress, $"[18/30] 수량에 {input.QuantityText} 값을 입력합니다.", () =>
                 FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, cancellationToken));
@@ -96,7 +95,7 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[21/30] 계산 결과가 정상 반영되었는지 확인합니다.", async () =>
             {
-                var ok = await PageContainsAnyAsync(page, new[] { input.SupplyAmountText, input.TaxAmountText }, cancellationToken);
+                var ok = await PageContainsAllGroupsAsync(page, input.CalculationResultGroups, cancellationToken);
                 if (!ok)
                 {
                     progress.Report(AutomationProgress.Warning("공급가액/세액을 찾지 못했습니다. 수량과 단가를 다시 입력한 뒤 계산을 재시도합니다."));
@@ -105,7 +104,7 @@ public sealed class ErpAutomationService
                     await ClickTextAsync(page, "계산", cancellationToken);
                 }
 
-                await WaitUntilAnyTextAsync(page, new[] { input.SupplyAmountText, input.TaxAmountText }, cancellationToken);
+                await WaitUntilAllGroupsAsync(page, input.CalculationResultGroups, cancellationToken);
             });
 
             await StepAsync(progress, $"[22/30] 계정코드(대변)에 {input.CreditAccountCode} 값을 입력하고 Enter를 실행합니다.", () =>
@@ -113,13 +112,21 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[23/30] 라인저장 전 입력값과 계산 결과를 확인한 뒤 라인저장(L) 버튼을 클릭합니다.", async () =>
             {
-                await WaitUntilAnyTextAsync(page, new[] { ItemText, input.SupplyAmountText, input.TaxAmountText }, cancellationToken);
+                await WaitUntilAllGroupsAsync(
+                    page,
+                    new IReadOnlyCollection<string>[]
+                    {
+                        new[] { AutomationInput.ItemText },
+                        input.SupplyAmountCandidates,
+                        input.TaxAmountCandidates
+                    },
+                    cancellationToken);
                 await ClickTextAsync(page, "라인저장", cancellationToken);
             });
 
             await StepAsync(progress, "[24/30] 라인 목록 반영 여부를 확인합니다.", async () =>
             {
-                await WaitUntilAnyTextAsync(page, new[] { ItemText, input.QuantityText, input.UnitPriceText, input.SupplyAmountText, input.TaxAmountText }, cancellationToken);
+                await WaitUntilAllGroupsAsync(page, input.LineResultGroups, cancellationToken);
             });
 
             await StepAsync(progress, "[25/30] 거래전기[S] 버튼을 클릭합니다.", () => ClickTextAsync(page, "거래전기", cancellationToken));
@@ -192,6 +199,27 @@ public sealed class ErpAutomationService
         throw new TimeoutException($"화면에서 다음 텍스트를 찾지 못했습니다: {string.Join(", ", texts)}");
     }
 
+    private static async Task WaitUntilAllGroupsAsync(
+        IPage page,
+        IReadOnlyCollection<IReadOnlyCollection<string>> groups,
+        CancellationToken cancellationToken)
+    {
+        var deadline = DateTime.UtcNow.Add(DefaultTimeout);
+        while (DateTime.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (await PageContainsAllGroupsAsync(page, groups, cancellationToken))
+            {
+                return;
+            }
+
+            await Task.Delay(500, cancellationToken);
+        }
+
+        var expected = groups.Select(group => $"[{string.Join(" 또는 ", group)}]");
+        throw new TimeoutException($"화면에서 다음 항목 조합을 찾지 못했습니다: {string.Join(", ", expected)}");
+    }
+
     private static async Task<bool> PageContainsAnyAsync(IPage page, IReadOnlyCollection<string> texts, CancellationToken cancellationToken)
     {
         foreach (var frame in page.Frames)
@@ -205,6 +233,36 @@ public sealed class ErpAutomationService
                         return texts.some(text => bodyText.includes(text));
                     }",
                     texts);
+                if (found)
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // Some transient frames can disappear while the ERP screen is changing.
+            }
+        }
+
+        return false;
+    }
+
+    private static async Task<bool> PageContainsAllGroupsAsync(
+        IPage page,
+        IReadOnlyCollection<IReadOnlyCollection<string>> groups,
+        CancellationToken cancellationToken)
+    {
+        foreach (var frame in page.Frames)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var found = await frame.EvaluateAsync<bool>(
+                    @"(groups) => {
+                        const bodyText = (document.body?.innerText || '').replace(/\s+/g, ' ');
+                        return groups.every(group => group.some(text => bodyText.includes(text)));
+                    }",
+                    groups);
                 if (found)
                 {
                     return true;
