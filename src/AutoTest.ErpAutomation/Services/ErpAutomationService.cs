@@ -87,13 +87,13 @@ public sealed class ErpAutomationService
             });
 
             await StepAsync(progress, $"[17/30] 품목코드/품목명(적요)에 {AutomationInput.ItemText}를 입력합니다.", () =>
-                FillNearLabelAsync(page, "품목코드/품목명(적요)", AutomationInput.ItemText, pressEnter: false, stepTimeout, cancellationToken));
+                FillNearLabelAsync(page, "품목코드/품목명(적요)", AutomationInput.ItemText, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true, preferWideControl: true));
 
             await StepAsync(progress, $"[18/30] 수량에 {input.QuantityText} 값을 입력합니다.", () =>
-                FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, stepTimeout, cancellationToken));
+                FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true));
 
             await StepAsync(progress, $"[19/30] 단가에 {input.UnitPriceText} 값을 입력합니다.", () =>
-                FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, stepTimeout, cancellationToken));
+                FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true));
 
             await StepAsync(progress, "[20/30] 계산 버튼을 클릭합니다.", () => ClickTextAsync(page, "계산", stepTimeout, cancellationToken));
 
@@ -104,8 +104,8 @@ public sealed class ErpAutomationService
                 if (hasZeroAmount || !ok)
                 {
                     progress.Report(AutomationProgress.Warning("공급가액/세액이 0이거나 기대값을 찾지 못했습니다. 수량과 단가를 다시 입력한 뒤 계산을 재시도합니다."));
-                    await FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, stepTimeout, cancellationToken);
-                    await FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, stepTimeout, cancellationToken);
+                    await FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true);
+                    await FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true);
                     await ClickTextAsync(page, "계산", stepTimeout, cancellationToken);
                 }
 
@@ -113,7 +113,7 @@ public sealed class ErpAutomationService
             });
 
             await StepAsync(progress, $"[22/30] 계정코드(대변)에 {input.CreditAccountCode} 값을 입력하고 Enter를 실행합니다.", () =>
-                FillNearLabelAsync(page, "계정코드(대변)", input.CreditAccountCode, pressEnter: true, stepTimeout, cancellationToken));
+                FillNearLabelAsync(page, "계정코드(대변)", input.CreditAccountCode, pressEnter: true, stepTimeout, cancellationToken, preferLowerArea: true));
 
             await StepAsync(progress, "[23/30] 라인저장 전 입력값과 계산 결과를 확인한 뒤 라인저장(L) 버튼을 클릭합니다.", async () =>
             {
@@ -178,9 +178,22 @@ public sealed class ErpAutomationService
         return RunInAnyFrameAsync(page, frame => ClickTextInFrameAsync(frame, text), $"'{text}' 클릭", timeout, cancellationToken);
     }
 
-    private static Task FillNearLabelAsync(IPage page, string label, string value, bool pressEnter, TimeSpan timeout, CancellationToken cancellationToken)
+    private static Task FillNearLabelAsync(
+        IPage page,
+        string label,
+        string value,
+        bool pressEnter,
+        TimeSpan timeout,
+        CancellationToken cancellationToken,
+        bool preferLowerArea = false,
+        bool preferWideControl = false)
     {
-        return RunInAnyFrameAsync(page, frame => FillNearLabelInFrameAsync(frame, label, value, pressEnter), $"'{label}' 입력", timeout, cancellationToken);
+        return RunInAnyFrameAsync(
+            page,
+            frame => FillNearLabelInFrameAsync(frame, label, value, pressEnter, preferLowerArea, preferWideControl),
+            $"'{label}' 입력",
+            timeout,
+            cancellationToken);
     }
 
     private static Task SelectByLabelAsync(IPage page, string label, string optionText, TimeSpan timeout, CancellationToken cancellationToken)
@@ -418,11 +431,24 @@ public sealed class ErpAutomationService
             text);
     }
 
-    private static Task<bool> FillNearLabelInFrameAsync(IFrame frame, string label, string value, bool pressEnter)
+    private static Task<bool> FillNearLabelInFrameAsync(
+        IFrame frame,
+        string label,
+        string value,
+        bool pressEnter,
+        bool preferLowerArea,
+        bool preferWideControl)
     {
         return frame.EvaluateAsync<bool>(
-            @"({ label, value, pressEnter }) => {
+            @"({ label, value, pressEnter, preferLowerArea, preferWideControl }) => {
                 const normalize = item => (item || '').replace(/\s+/g, ' ').trim();
+                const normalizeKey = item => normalize(item).replace(/[\s()[\]{}<>\/\\:_-]/g, '');
+                const targetKey = normalizeKey(label);
+                const matchesLabel = element => {
+                    const key = normalizeKey(element.innerText || element.textContent || element.value || element.title);
+                    if (!key || key.length < 2) return false;
+                    return key.includes(targetKey) || (targetKey.includes(key) && key.length >= Math.min(4, targetKey.length));
+                };
                 const visible = element => {
                     const style = window.getComputedStyle(element);
                     const rect = element.getBoundingClientRect();
@@ -441,30 +467,41 @@ public sealed class ErpAutomationService
                     control.dispatchEvent(new Event('change', { bubbles: true }));
                     if (pressEnter) {
                         control.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
+                        control.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', bubbles: true }));
                         control.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }));
                     }
                     return true;
                 };
-                const labels = Array.from(document.querySelectorAll('label, th, td, span, div')).filter(element => visible(element) && normalize(element.innerText).includes(label));
+                const scoreControl = (control, labelRect) => {
+                    const rect = control.getBoundingClientRect();
+                    let score = Math.abs(rect.top - labelRect.top) * 3 + Math.max(0, rect.left - labelRect.right);
+                    if (rect.left < labelRect.left - 5) score += 1000;
+                    if (preferLowerArea && rect.top < window.innerHeight * 0.45) score += 900;
+                    if (preferWideControl) score -= Math.min(rect.width, 420);
+                    return score;
+                };
+                const labels = Array.from(document.querySelectorAll('label, th, td, span, div')).filter(element => visible(element) && matchesLabel(element));
                 for (const labelElement of labels) {
                     const row = labelElement.closest('tr');
+                    const labelRect = labelElement.getBoundingClientRect();
                     if (row) {
                         const rowControls = Array.from(row.querySelectorAll('input:not([type=hidden]), textarea, [contenteditable=true]')).filter(visible);
-                        const labelRect = labelElement.getBoundingClientRect();
-                        const target = rowControls.find(control => control.getBoundingClientRect().left >= labelRect.left) || rowControls[0];
+                        const target = rowControls
+                            .map(control => ({ control, score: scoreControl(control, labelRect) }))
+                            .sort((a, b) => a.score - b.score)[0]?.control;
                         if (target) return setValue(target);
                     }
 
-                    const labelRect = labelElement.getBoundingClientRect();
                     const nearby = controls()
                         .map(control => ({ control, rect: control.getBoundingClientRect() }))
-                        .filter(item => Math.abs(item.rect.top - labelRect.top) < 70 && item.rect.left >= labelRect.left - 5)
-                        .sort((a, b) => Math.abs(a.rect.left - labelRect.right) - Math.abs(b.rect.left - labelRect.right))[0];
+                        .filter(item => Math.abs(item.rect.top - labelRect.top) < 90 && item.rect.left >= labelRect.left - 5)
+                        .map(item => ({ control: item.control, score: scoreControl(item.control, labelRect) }))
+                        .sort((a, b) => a.score - b.score)[0];
                     if (nearby) return setValue(nearby.control);
                 }
                 return false;
             }",
-            new { label, value, pressEnter });
+            new { label, value, pressEnter, preferLowerArea, preferWideControl });
     }
 
     private static Task<bool> SelectByLabelInFrameAsync(IFrame frame, string label, string optionText)
@@ -472,12 +509,19 @@ public sealed class ErpAutomationService
         return frame.EvaluateAsync<bool>(
             @"({ label, optionText }) => {
                 const normalize = item => (item || '').replace(/\s+/g, ' ').trim();
+                const normalizeKey = item => normalize(item).replace(/[\s()[\]{}<>\/\\:_-]/g, '');
+                const targetKey = normalizeKey(label);
+                const matchesLabel = element => {
+                    const key = normalizeKey(element.innerText || element.textContent || element.value || element.title);
+                    if (!key || key.length < 2) return false;
+                    return key.includes(targetKey) || (targetKey.includes(key) && key.length >= Math.min(4, targetKey.length));
+                };
                 const visible = element => {
                     const style = window.getComputedStyle(element);
                     const rect = element.getBoundingClientRect();
                     return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
                 };
-                const labels = Array.from(document.querySelectorAll('label, th, td, span, div')).filter(element => visible(element) && normalize(element.innerText).includes(label));
+                const labels = Array.from(document.querySelectorAll('label, th, td, span, div')).filter(element => visible(element) && matchesLabel(element));
                 for (const labelElement of labels) {
                     const row = labelElement.closest('tr');
                     const scope = row || document;
