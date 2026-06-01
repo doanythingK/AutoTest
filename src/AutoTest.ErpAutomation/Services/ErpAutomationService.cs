@@ -135,23 +135,23 @@ public sealed class ErpAutomationService
             await StepAsync(progress, $"[22/30] 계정코드(대변)에 {input.CreditAccountCode} 값을 입력하고 Enter를 실행합니다.", () =>
                 FillNearAnyLabelAsync(page, new[] { "계정코드(대변)", "계정코드", "대변" }, input.CreditAccountCode, pressEnter: true, stepTimeout, cancellationToken, preferLowerArea: true));
 
+            var beforeLineSaveExpectations = new object[]
+            {
+                new { label = "수량", values = input.QuantityCandidates },
+                new { label = "단가", values = input.UnitPriceCandidates },
+                new { label = "공급가액", values = input.SupplyAmountCandidates },
+                new { label = "세액", values = input.TaxAmountCandidates }
+            };
+
             await StepAsync(progress, "[23/30] 라인저장 전 입력값과 계산 결과를 확인한 뒤 라인저장(L) 버튼을 클릭합니다.", async () =>
             {
-                var beforeLineSaveExpectations = new object[]
-                {
-                    new { label = "수량", values = input.QuantityCandidates },
-                    new { label = "단가", values = input.UnitPriceCandidates },
-                    new { label = "공급가액", values = input.SupplyAmountCandidates },
-                    new { label = "세액", values = input.TaxAmountCandidates }
-                };
-                await WaitUntilAnyTextAsync(page, new[] { AutomationInput.ItemText }, stepTimeout, cancellationToken);
-                await WaitUntilExpectedValuesNearLabelsAsync(page, beforeLineSaveExpectations, stepTimeout, cancellationToken);
+                await ConfirmBeforeLineSaveAsync(page, beforeLineSaveExpectations, stepTimeout, cancellationToken);
                 await ClickTextAsync(page, "라인저장", stepTimeout, cancellationToken, preferLowerArea: true);
             });
 
             await StepAsync(progress, "[24/30] 라인 목록 반영 여부를 확인합니다.", async () =>
             {
-                await WaitUntilLineResultRowAsync(page, input.LineResultGroups, stepTimeout, cancellationToken);
+                await WaitUntilLineResultRowOrRetrySaveAsync(page, input.LineResultGroups, beforeLineSaveExpectations, stepTimeout, progress, cancellationToken);
             });
 
             await StepAsync(progress, "[25/30] 거래전기[S] 버튼을 클릭합니다.", () => ClickTextAsync(page, "거래전기", stepTimeout, cancellationToken, preferUpperArea: true));
@@ -650,20 +650,63 @@ public sealed class ErpAutomationService
         TimeSpan timeout,
         CancellationToken cancellationToken)
     {
+        if (await TryWaitUntilLineResultRowAsync(page, groups, timeout, cancellationToken))
+        {
+            return;
+        }
+
+        var expected = groups.Select(group => $"[{string.Join(" 또는 ", group)}]");
+        throw new TimeoutException($"라인 목록 행에서 다음 항목 조합을 찾지 못했습니다: {string.Join(", ", expected)}");
+    }
+
+    private static async Task WaitUntilLineResultRowOrRetrySaveAsync(
+        IPage page,
+        IReadOnlyCollection<IReadOnlyCollection<string>> groups,
+        IReadOnlyCollection<object> beforeLineSaveExpectations,
+        TimeSpan timeout,
+        IProgress<AutomationProgress> progress,
+        CancellationToken cancellationToken)
+    {
+        if (await TryWaitUntilLineResultRowAsync(page, groups, timeout, cancellationToken))
+        {
+            return;
+        }
+
+        progress.Report(AutomationProgress.Warning("라인 목록 반영을 확인하지 못했습니다. 저장 전 입력값과 계산 결과를 다시 확인한 뒤 라인저장을 한 번 더 클릭합니다."));
+        await ConfirmBeforeLineSaveAsync(page, beforeLineSaveExpectations, timeout, cancellationToken);
+        await ClickTextAsync(page, "라인저장", timeout, cancellationToken, preferLowerArea: true);
+        await WaitUntilLineResultRowAsync(page, groups, timeout, cancellationToken);
+    }
+
+    private static async Task<bool> TryWaitUntilLineResultRowAsync(
+        IPage page,
+        IReadOnlyCollection<IReadOnlyCollection<string>> groups,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
         var deadline = DateTime.UtcNow.Add(timeout);
         while (DateTime.UtcNow < deadline)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (await PageContainsLineResultRowAsync(page, groups, cancellationToken))
             {
-                return;
+                return true;
             }
 
             await Task.Delay(500, cancellationToken);
         }
 
-        var expected = groups.Select(group => $"[{string.Join(" 또는 ", group)}]");
-        throw new TimeoutException($"라인 목록 행에서 다음 항목 조합을 찾지 못했습니다: {string.Join(", ", expected)}");
+        return false;
+    }
+
+    private static async Task ConfirmBeforeLineSaveAsync(
+        IPage page,
+        IReadOnlyCollection<object> beforeLineSaveExpectations,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        await WaitUntilAnyTextAsync(page, new[] { AutomationInput.ItemText }, timeout, cancellationToken);
+        await WaitUntilExpectedValuesNearLabelsAsync(page, beforeLineSaveExpectations, timeout, cancellationToken);
     }
 
     private static async Task WaitUntilExpectedValuesNearLabelsAsync(
