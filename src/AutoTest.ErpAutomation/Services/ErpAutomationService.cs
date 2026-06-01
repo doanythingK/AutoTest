@@ -44,7 +44,7 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[05/30] 로그인 성공 여부를 확인합니다.", async () =>
             {
-                await WaitUntilAnyTextAsync(page, new[] { "회계관리", "로그아웃", "ERP" }, stepTimeout, cancellationToken);
+                await WaitUntilAnyTextAsync(page, new[] { "회계관리", "로그아웃" }, stepTimeout, cancellationToken);
             });
 
             progress.Report(AutomationProgress.Info("[06/30] 로그인된 탭은 닫지 않고 유지합니다."));
