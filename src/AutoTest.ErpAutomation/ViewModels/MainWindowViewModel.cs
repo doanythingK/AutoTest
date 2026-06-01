@@ -9,6 +9,8 @@ namespace AutoTest.ErpAutomation.ViewModels;
 public partial class MainWindowViewModel : ObservableObject
 {
     private readonly ChromeConnectionService _chromeConnectionService;
+    private readonly ErpAutomationService _erpAutomationService;
+    private CancellationTokenSource? _automationCancellation;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ExpectedSupplyAmountText))]
@@ -35,9 +37,15 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private string statusMessage = "대기 중";
 
-    public MainWindowViewModel(ChromeConnectionService chromeConnectionService)
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RunAutomationCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CancelAutomationCommand))]
+    private bool isRunning;
+
+    public MainWindowViewModel(ChromeConnectionService chromeConnectionService, ErpAutomationService erpAutomationService)
     {
         _chromeConnectionService = chromeConnectionService;
+        _erpAutomationService = erpAutomationService;
     }
 
     public ObservableCollection<AutomationLogEntry> Logs { get; } = new();
@@ -84,7 +92,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanRunAutomation))]
     private async Task RunAutomationAsync()
     {
         if (!TryCreateInput(out var input, out var error))
@@ -96,8 +104,64 @@ public partial class MainWindowViewModel : ObservableObject
 
         AddInfo($"입력 확인: 거래일자 {input.TransactionDateText}, 수량 {input.QuantityText}, 단가 {input.UnitPriceText}");
         AddInfo($"예상 공급가액 {input.SupplyAmountText}, 예상 세액 {input.TaxAmountText}");
-        await CheckChromeAsync();
-        AddWarning("ERP 자동화 실행 서비스는 다음 기능 커밋에서 연결됩니다.");
+
+        _automationCancellation?.Dispose();
+        _automationCancellation = new CancellationTokenSource();
+        IsRunning = true;
+        StatusMessage = "자동화 실행 중";
+
+        try
+        {
+            var progress = new Progress<AutomationProgress>(OnAutomationProgress);
+            await _erpAutomationService.RunAsync(input, progress, _automationCancellation.Token);
+            StatusMessage = "자동화 완료";
+        }
+        catch (OperationCanceledException)
+        {
+            AddWarning("자동화가 중지되었습니다.");
+            StatusMessage = "자동화 중지";
+        }
+        catch (Exception ex)
+        {
+            AddError(ex.Message);
+            StatusMessage = "자동화 실패";
+        }
+        finally
+        {
+            IsRunning = false;
+        }
+    }
+
+    private bool CanRunAutomation()
+    {
+        return !IsRunning;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanCancelAutomation))]
+    private void CancelAutomation()
+    {
+        _automationCancellation?.Cancel();
+    }
+
+    private bool CanCancelAutomation()
+    {
+        return IsRunning;
+    }
+
+    private void OnAutomationProgress(AutomationProgress progress)
+    {
+        switch (progress.Level)
+        {
+            case AutomationLogLevel.Warning:
+                AddWarning(progress.Message);
+                break;
+            case AutomationLogLevel.Error:
+                AddError(progress.Message);
+                break;
+            default:
+                AddInfo(progress.Message);
+                break;
+        }
     }
 
     private bool TryCreateInput(out AutomationInput input)

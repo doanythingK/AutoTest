@@ -9,6 +9,6 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        DataContext = new MainWindowViewModel(new ChromeConnectionService());
+        DataContext = new MainWindowViewModel(new ChromeConnectionService(), new ErpAutomationService());
     }
 }
