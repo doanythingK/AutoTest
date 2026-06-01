@@ -23,6 +23,8 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 
 ## WPF 실행 순서
 
+앱 실행 파일 생성과 개발 실행 명령은 [BUILD_AND_RUN.md](BUILD_AND_RUN.md)를 기준으로 한다.
+
 1. `Chrome 연결 설정`을 확인하고 필요하면 `설정 저장`을 누른다.
 2. `Chrome 연결 확인`을 눌러 연결 상태를 확인한다.
 3. 수량을 입력한다.
