@@ -382,7 +382,28 @@ public sealed class ErpAutomationService
             {
                 var found = await frame.EvaluateAsync<bool>(
                     @"(texts) => {
-                        const bodyText = (document.body?.innerText || '').replace(/\s+/g, ' ');
+                        const visible = element => {
+                            const style = window.getComputedStyle(element);
+                            const rect = element.getBoundingClientRect();
+                            return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+                        };
+                        const valueText = element => {
+                            const values = [
+                                element.innerText,
+                                element.textContent,
+                                element.value,
+                                element.title,
+                                element.getAttribute('aria-label')
+                            ];
+                            if (element.tagName?.toLowerCase() === 'select') {
+                                values.push(...Array.from(element.selectedOptions || []).map(option => option.text));
+                            }
+                            return values.filter(Boolean).join(' ');
+                        };
+                        const visibleValues = Array.from(document.querySelectorAll('input:not([type=hidden]), textarea, select, [title], [aria-label]'))
+                            .filter(visible)
+                            .map(valueText);
+                        const bodyText = [document.body?.innerText || '', ...visibleValues].join(' ').replace(/\s+/g, ' ');
                         const normalizeKey = value => String(value || '').replace(/[\s:：]/g, '');
                         const bodyKey = normalizeKey(bodyText);
                         return texts.some(text => bodyText.includes(text) || bodyKey.includes(normalizeKey(text)));
@@ -414,7 +435,28 @@ public sealed class ErpAutomationService
             {
                 var found = await frame.EvaluateAsync<bool>(
                     @"(groups) => {
-                        const bodyText = (document.body?.innerText || '').replace(/\s+/g, ' ');
+                        const visible = element => {
+                            const style = window.getComputedStyle(element);
+                            const rect = element.getBoundingClientRect();
+                            return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+                        };
+                        const valueText = element => {
+                            const values = [
+                                element.innerText,
+                                element.textContent,
+                                element.value,
+                                element.title,
+                                element.getAttribute('aria-label')
+                            ];
+                            if (element.tagName?.toLowerCase() === 'select') {
+                                values.push(...Array.from(element.selectedOptions || []).map(option => option.text));
+                            }
+                            return values.filter(Boolean).join(' ');
+                        };
+                        const visibleValues = Array.from(document.querySelectorAll('input:not([type=hidden]), textarea, select, [title], [aria-label]'))
+                            .filter(visible)
+                            .map(valueText);
+                        const bodyText = [document.body?.innerText || '', ...visibleValues].join(' ').replace(/\s+/g, ' ');
                         const normalizedBodyText = bodyText.replace(/[,\s]/g, '');
                         const normalize = value => String(value || '').replace(/[,\s]/g, '');
                         return groups.every(group => group.some(text => normalizedBodyText.includes(normalize(text))));
