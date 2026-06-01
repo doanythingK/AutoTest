@@ -1349,6 +1349,9 @@ public sealed class ErpAutomationService
             var title = await GetPageTitleAsync(page);
             progress.Report(AutomationProgress.Warning($"실패 당시 페이지: {title}"));
             progress.Report(AutomationProgress.Warning($"실패 당시 URL: {page.Url}"));
+            progress.Report(AutomationProgress.Warning($"실패 입력값: 거래일자 {input.TransactionDateText}, 수량 {input.QuantityText}, 단가 {input.UnitPriceText}"));
+            progress.Report(AutomationProgress.Warning($"실패 입력값: 거래처코드 {input.ClientCode}, 계정코드 {input.CreditAccountCode}, 품목 {AutomationInput.ItemText}"));
+            progress.Report(AutomationProgress.Warning($"실패 예상값: 공급가액 {input.SupplyAmountText}, 세액 {input.TaxAmountText}"));
 
             try
             {
