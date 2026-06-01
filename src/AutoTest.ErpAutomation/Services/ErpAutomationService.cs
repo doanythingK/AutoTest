@@ -168,7 +168,7 @@ public sealed class ErpAutomationService
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            await SaveFailureArtifactsAsync(page, progress);
+            await SaveFailureArtifactsAsync(page, input, progress);
             throw;
         }
         finally
@@ -1336,7 +1336,7 @@ public sealed class ErpAutomationService
             labels);
     }
 
-    private static async Task SaveFailureArtifactsAsync(IPage page, IProgress<AutomationProgress> progress)
+    private static async Task SaveFailureArtifactsAsync(IPage page, AutomationInput input, IProgress<AutomationProgress> progress)
     {
         try
         {
@@ -1367,7 +1367,7 @@ public sealed class ErpAutomationService
 
             try
             {
-                await File.WriteAllTextAsync(htmlPath, await BuildFailureHtmlAsync(page));
+                await File.WriteAllTextAsync(htmlPath, await BuildFailureHtmlAsync(page, input));
 
                 progress.Report(AutomationProgress.Warning($"실패 HTML을 저장했습니다: {htmlPath}"));
             }
@@ -1421,7 +1421,7 @@ public sealed class ErpAutomationService
         }
     }
 
-    private static async Task<string> BuildFailureHtmlAsync(IPage page)
+    private static async Task<string> BuildFailureHtmlAsync(IPage page, AutomationInput input)
     {
         var builder = new StringBuilder();
         builder.AppendLine("<!doctype html>");
@@ -1430,6 +1430,17 @@ public sealed class ErpAutomationService
         builder.AppendLine($"<p>Captured at {WebUtility.HtmlEncode(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))}</p>");
         builder.AppendLine($"<p>Page title: {WebUtility.HtmlEncode(await GetPageTitleAsync(page))}</p>");
         builder.AppendLine($"<p>Page URL: {WebUtility.HtmlEncode(page.Url)}</p>");
+        builder.AppendLine("<h2>Automation input</h2>");
+        builder.AppendLine("<dl>");
+        builder.AppendLine($"<dt>Transaction date</dt><dd>{WebUtility.HtmlEncode(input.TransactionDateText)}</dd>");
+        builder.AppendLine($"<dt>Quantity</dt><dd>{WebUtility.HtmlEncode(input.QuantityText)}</dd>");
+        builder.AppendLine($"<dt>Unit price</dt><dd>{WebUtility.HtmlEncode(input.UnitPriceText)}</dd>");
+        builder.AppendLine($"<dt>Client code</dt><dd>{WebUtility.HtmlEncode(input.ClientCode)}</dd>");
+        builder.AppendLine($"<dt>Credit account code</dt><dd>{WebUtility.HtmlEncode(input.CreditAccountCode)}</dd>");
+        builder.AppendLine($"<dt>Item</dt><dd>{WebUtility.HtmlEncode(AutomationInput.ItemText)}</dd>");
+        builder.AppendLine($"<dt>Expected supply amount</dt><dd>{WebUtility.HtmlEncode(input.SupplyAmountText)}</dd>");
+        builder.AppendLine($"<dt>Expected tax amount</dt><dd>{WebUtility.HtmlEncode(input.TaxAmountText)}</dd>");
+        builder.AppendLine("</dl>");
 
         var index = 1;
         foreach (var frame in page.Frames)
