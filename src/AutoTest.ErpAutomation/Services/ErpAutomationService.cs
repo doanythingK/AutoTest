@@ -925,15 +925,26 @@ public sealed class ErpAutomationService
                         control.getAttribute('placeholder'),
                         control.getAttribute('aria-label')
                     ].map(normalizeKey).join(' ');
-                    return attrs.includes('password')
-                        || attrs.includes('passwd')
-                        || attrs.includes('pwd')
-                        || attrs.includes('username')
-                        || attrs.includes('userid')
-                        || attrs.includes('loginid')
-                        || attrs.includes('아이디')
-                        || attrs.includes('비밀번호')
-                        || attrs.includes('로그인아이디');
+                    const relatedLabel = control.id
+                        ? Array.from(document.querySelectorAll('label')).find(label => label.getAttribute('for') === control.id)?.innerText
+                        : '';
+                    const context = [
+                        attrs,
+                        control.closest('label')?.innerText,
+                        relatedLabel,
+                        control.closest('tr')?.innerText,
+                        control.parentElement?.innerText,
+                        control.previousElementSibling?.innerText
+                    ].map(normalizeKey).join(' ');
+                    return context.includes('password')
+                        || context.includes('passwd')
+                        || context.includes('pwd')
+                        || context.includes('username')
+                        || context.includes('userid')
+                        || context.includes('loginid')
+                        || context.includes('아이디')
+                        || context.includes('비밀번호')
+                        || context.includes('로그인아이디');
                 };
                 const controls = Array.from(document.querySelectorAll('input:not([type=hidden])'))
                     .filter(control => visible(control) && isCredentialControl(control));
@@ -1340,17 +1351,28 @@ public sealed class ErpAutomationService
                         control.getAttribute('placeholder'),
                         control.getAttribute('aria-label')
                     ].map(normalizeKey).join(' ');
-                    return attrs.includes('password')
-                        || attrs.includes('passwd')
-                        || attrs.includes('pwd')
-                        || attrs.includes('currentpassword')
-                        || attrs.includes('newpassword')
-                        || attrs.includes('username')
-                        || attrs.includes('userid')
-                        || attrs.includes('loginid')
-                        || attrs.includes('아이디')
-                        || attrs.includes('비밀번호')
-                        || attrs.includes('로그인아이디');
+                    const relatedLabel = control.id
+                        ? Array.from(document.querySelectorAll('label')).find(label => label.getAttribute('for') === control.id)?.innerText
+                        : '';
+                    const context = [
+                        attrs,
+                        control.closest('label')?.innerText,
+                        relatedLabel,
+                        control.closest('tr')?.innerText,
+                        control.parentElement?.innerText,
+                        control.previousElementSibling?.innerText
+                    ].map(normalizeKey).join(' ');
+                    return context.includes('password')
+                        || context.includes('passwd')
+                        || context.includes('pwd')
+                        || context.includes('currentpassword')
+                        || context.includes('newpassword')
+                        || context.includes('username')
+                        || context.includes('userid')
+                        || context.includes('loginid')
+                        || context.includes('아이디')
+                        || context.includes('비밀번호')
+                        || context.includes('로그인아이디');
                 };
                 const chooseValue = control => {
                     const type = normalize(control.getAttribute('type')).toLowerCase();
@@ -1617,39 +1639,7 @@ public sealed class ErpAutomationService
                         const style = document.createElement('style');
                         style.id = styleId;
                         style.textContent = `
-                            input[type='password'],
-                            input[name*='password' i],
-                            input[id*='password' i],
-                            input[autocomplete*='password' i],
-                            input[name*='passwd' i],
-                            input[id*='passwd' i],
-                            input[name*='pwd' i],
-                            input[id*='pwd' i],
-                            input[name*='username' i],
-                            input[id*='username' i],
-                            input[autocomplete*='username' i],
-                            input[name*='userid' i],
-                            input[id*='userid' i],
-                            input[name*='loginid' i],
-                            input[id*='loginid' i],
-                            input[name*='아이디'],
-                            input[id*='아이디'],
-                            input[placeholder*='아이디'],
-                            input[aria-label*='아이디'],
-                            input[name*='로그인아이디'],
-                            input[id*='로그인아이디'],
-                            input[placeholder*='로그인아이디'],
-                            input[aria-label*='로그인아이디'],
-                            input[name*='비밀번호'],
-                            input[id*='비밀번호'],
-                            input[placeholder*='비밀번호'],
-                            input[aria-label*='비밀번호'],
-                            textarea[name*='password' i],
-                            textarea[id*='password' i],
-                            textarea[name*='비밀번호'],
-                            textarea[id*='비밀번호'],
-                            textarea[placeholder*='비밀번호'],
-                            textarea[aria-label*='비밀번호'] {
+                            [data-autotest-credential-mask='true'] {
                                 color: transparent !important;
                                 text-shadow: none !important;
                                 caret-color: transparent !important;
@@ -1658,6 +1648,42 @@ public sealed class ErpAutomationService
                             }
                         `;
                         (document.head || document.documentElement).appendChild(style);
+                        const normalizeKey = value => String(value || '').replace(/[\s()[\]{}<>\/\\:_-]/g, '').toLowerCase();
+                        const isCredentialControl = control => {
+                            const attrs = [
+                                control.getAttribute('type'),
+                                control.getAttribute('name'),
+                                control.getAttribute('id'),
+                                control.getAttribute('autocomplete'),
+                                control.getAttribute('placeholder'),
+                                control.getAttribute('aria-label')
+                            ].map(normalizeKey).join(' ');
+                            const relatedLabel = control.id
+                                ? Array.from(document.querySelectorAll('label')).find(label => label.getAttribute('for') === control.id)?.innerText
+                                : '';
+                            const context = [
+                                attrs,
+                                control.closest('label')?.innerText,
+                                relatedLabel,
+                                control.closest('tr')?.innerText,
+                                control.parentElement?.innerText,
+                                control.previousElementSibling?.innerText
+                            ].map(normalizeKey).join(' ');
+                            return context.includes('password')
+                                || context.includes('passwd')
+                                || context.includes('pwd')
+                                || context.includes('currentpassword')
+                                || context.includes('newpassword')
+                                || context.includes('username')
+                                || context.includes('userid')
+                                || context.includes('loginid')
+                                || context.includes('아이디')
+                                || context.includes('비밀번호')
+                                || context.includes('로그인아이디');
+                        };
+                        Array.from(document.querySelectorAll('input, textarea, [contenteditable=true]'))
+                            .filter(isCredentialControl)
+                            .forEach(control => control.setAttribute('data-autotest-credential-mask', 'true'));
                     }",
                     CredentialScreenshotMaskStyleId);
             }
@@ -1677,6 +1703,7 @@ public sealed class ErpAutomationService
                 await frame.EvaluateAsync(
                     @"(styleId) => {
                         document.getElementById(styleId)?.remove();
+                        document.querySelectorAll('[data-autotest-credential-mask]').forEach(element => element.removeAttribute('data-autotest-credential-mask'));
                     }",
                     CredentialScreenshotMaskStyleId);
             }
@@ -1787,17 +1814,28 @@ public sealed class ErpAutomationService
                         element.getAttribute('placeholder'),
                         element.getAttribute('aria-label')
                     ].map(normalizeKey).join(' ');
-                    return attrs.includes('password')
-                        || attrs.includes('passwd')
-                        || attrs.includes('pwd')
-                        || attrs.includes('currentpassword')
-                        || attrs.includes('newpassword')
-                        || attrs.includes('username')
-                        || attrs.includes('userid')
-                        || attrs.includes('loginid')
-                        || attrs.includes('아이디')
-                        || attrs.includes('비밀번호')
-                        || attrs.includes('로그인아이디');
+                    const relatedLabel = element.id
+                        ? Array.from(document.querySelectorAll('label')).find(label => label.getAttribute('for') === element.id)?.innerText
+                        : '';
+                    const context = [
+                        attrs,
+                        element.closest('label')?.innerText,
+                        relatedLabel,
+                        element.closest('tr')?.innerText,
+                        element.parentElement?.innerText,
+                        element.previousElementSibling?.innerText
+                    ].map(normalizeKey).join(' ');
+                    return context.includes('password')
+                        || context.includes('passwd')
+                        || context.includes('pwd')
+                        || context.includes('currentpassword')
+                        || context.includes('newpassword')
+                        || context.includes('username')
+                        || context.includes('userid')
+                        || context.includes('loginid')
+                        || context.includes('아이디')
+                        || context.includes('비밀번호')
+                        || context.includes('로그인아이디');
                 };
                 const valueOf = element => {
                     if (isCredentialControl(element)) return '(masked)';
@@ -1848,17 +1886,28 @@ public sealed class ErpAutomationService
                         element.getAttribute('placeholder'),
                         element.getAttribute('aria-label')
                     ].map(normalizeKey).join(' ');
-                    return attrs.includes('password')
-                        || attrs.includes('passwd')
-                        || attrs.includes('pwd')
-                        || attrs.includes('currentpassword')
-                        || attrs.includes('newpassword')
-                        || attrs.includes('username')
-                        || attrs.includes('userid')
-                        || attrs.includes('loginid')
-                        || attrs.includes('아이디')
-                        || attrs.includes('비밀번호')
-                        || attrs.includes('로그인아이디');
+                    const relatedLabel = element.id
+                        ? Array.from(document.querySelectorAll('label')).find(label => label.getAttribute('for') === element.id)?.innerText
+                        : '';
+                    const context = [
+                        attrs,
+                        element.closest('label')?.innerText,
+                        relatedLabel,
+                        element.closest('tr')?.innerText,
+                        element.parentElement?.innerText,
+                        element.previousElementSibling?.innerText
+                    ].map(normalizeKey).join(' ');
+                    return context.includes('password')
+                        || context.includes('passwd')
+                        || context.includes('pwd')
+                        || context.includes('currentpassword')
+                        || context.includes('newpassword')
+                        || context.includes('username')
+                        || context.includes('userid')
+                        || context.includes('loginid')
+                        || context.includes('아이디')
+                        || context.includes('비밀번호')
+                        || context.includes('로그인아이디');
                 };
                 const selector = 'input, textarea, [contenteditable=true]';
                 const sourceControls = Array.from(document.querySelectorAll(selector));
