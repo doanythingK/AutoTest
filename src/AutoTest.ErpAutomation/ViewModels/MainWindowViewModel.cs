@@ -206,6 +206,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         AddInfo($"실행 로그 파일을 생성했습니다: {_currentRunLogPath}");
         AddInfo($"입력 확인: 거래일자 {input.TransactionDateText}, 수량 {input.QuantityText}, 단가 {input.UnitPriceText}");
+        AddInfo($"입력 확인: 거래처코드 {input.ClientCode}, 계정코드 {input.CreditAccountCode}");
         AddInfo($"예상 공급가액 {input.SupplyAmountText}, 예상 세액 {input.TaxAmountText}");
 
         IsRunning = true;
