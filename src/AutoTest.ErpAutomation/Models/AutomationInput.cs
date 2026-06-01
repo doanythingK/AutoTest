@@ -127,17 +127,31 @@ public sealed record AutomationInput(
             return false;
         }
 
+        var normalizedClientCode = clientCode.Trim();
+        if (ContainsWhiteSpace(normalizedClientCode))
+        {
+            error = "거래처코드에는 공백을 포함할 수 없습니다.";
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(creditAccountCode))
         {
             error = "계정코드를 입력해야 합니다.";
             return false;
         }
 
+        var normalizedCreditAccountCode = creditAccountCode.Trim();
+        if (ContainsWhiteSpace(normalizedCreditAccountCode))
+        {
+            error = "계정코드에는 공백을 포함할 수 없습니다.";
+            return false;
+        }
+
         input = new AutomationInput(
             quantity,
             unitPrice,
-            clientCode.Trim(),
-            creditAccountCode.Trim(),
+            normalizedClientCode,
+            normalizedCreditAccountCode,
             DateOnly.FromDateTime(transactionDate ?? DateTime.Today));
         return true;
     }
@@ -178,5 +192,10 @@ public sealed record AutomationInput(
     private static string NormalizeNumberText(string value)
     {
         return value.Replace(",", string.Empty).Replace(" ", string.Empty);
+    }
+
+    private static bool ContainsWhiteSpace(string value)
+    {
+        return value.Any(char.IsWhiteSpace);
     }
 }
