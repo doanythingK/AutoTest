@@ -60,7 +60,7 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 로그 파일에는 앱 버전, 소스 커밋, 입력값, 예상 계산값, 실행 PC/사용자, Chrome 설정, 단계별 로그, 최종 실행 결과, 종료 시각, 소요 시간이 저장됩니다.
 
 WPF 화면의 `로그 폴더 열기`, `최근 로그 열기`, `실패 자료 열기`, `최근 실패 HTML`, `최근 실패 화면` 버튼으로 실행 로그 파일과 실패 자료를 바로 열 수 있습니다.
-자동화 1회 실행이 끝나면 `%LOCALAPPDATA%\AutoTest.ErpAutomation\VerificationReports`에 30단계 실행 대조 Markdown 리포트를 저장하고, WPF 화면의 `검증 리포트 폴더`, `최근 검증 리포트` 버튼으로 바로 열 수 있습니다.
+자동화 1회 실행이 끝나면 `%LOCALAPPDATA%\AutoTest.ErpAutomation\VerificationReports`에 30단계 실행 대조 Markdown 리포트를 저장하고, WPF 화면의 `검증 리포트 폴더`, `최근 검증 리포트` 버튼으로 바로 열 수 있습니다. 리포트에는 로그 기준 판정, 확인/실패/미확인 단계 수, 첫 확인 필요 단계가 함께 표시됩니다.
 
 공급가액과 세액은 ERP 화면의 해당 라벨 주변 값으로 먼저 확인하고, 수량과 단가 검증은 콤마와 공백을 제거한 뒤 비교합니다.
 

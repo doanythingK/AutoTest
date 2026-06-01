@@ -72,6 +72,24 @@ public sealed class AutomationVerificationReportService
         builder.AppendLine($"- 단계 대기 시간: {settings.StepTimeoutSeconds}초");
         builder.AppendLine();
 
+        var stepResults = BuildStepResults(logs);
+        var confirmedCount = stepResults.Count(step => step.Status == "로그 확인");
+        var failedCount = stepResults.Count(step => step.Status == "실패");
+        var missingCount = stepResults.Count(step => step.Status == "미확인");
+        var firstProblem = stepResults.FirstOrDefault(step => step.Status != "로그 확인");
+        var logBasedResult = runResult == "완료" && failedCount == 0 && missingCount == 0
+            ? "로그 기준 완료 후보"
+            : "미완료 또는 확인 필요";
+
+        builder.AppendLine("## 자동 대조 요약");
+        builder.AppendLine();
+        builder.AppendLine($"- 로그 기준 판정: {logBasedResult}");
+        builder.AppendLine($"- 로그 확인 단계: {confirmedCount}/30");
+        builder.AppendLine($"- 실패 단계: {failedCount}");
+        builder.AppendLine($"- 미확인 단계: {missingCount}");
+        builder.AppendLine($"- 첫 확인 필요 단계: {(firstProblem is null ? "없음" : $"{firstProblem.Number}. {firstProblem.Description} ({firstProblem.Status})")}");
+        builder.AppendLine();
+
         builder.AppendLine("## 입력값과 예상 계산값");
         builder.AppendLine();
         builder.AppendLine($"- 거래일자: {input.TransactionDateText}");
@@ -88,20 +106,9 @@ public sealed class AutomationVerificationReportService
         builder.AppendLine("| 단계 | 요구사항 | 상태 | 근거 로그 |");
         builder.AppendLine("| --- | --- | --- | --- |");
 
-        for (var index = 0; index < StepDescriptions.Count; index++)
+        foreach (var step in stepResults)
         {
-            var stepNumber = index + 1;
-            var marker = $"[{stepNumber:00}/30]";
-            var stepLogs = logs.Where(entry => entry.Message.Contains(marker, StringComparison.Ordinal)).ToArray();
-            var error = stepLogs.LastOrDefault(entry => entry.Level == "오류");
-            var evidence = error ?? stepLogs.LastOrDefault();
-            var status = error is not null
-                ? "실패"
-                : stepLogs.Length > 0
-                    ? "로그 확인"
-                    : "미확인";
-
-            builder.AppendLine($"| {stepNumber} | {EscapeMarkdown(StepDescriptions[index])} | {status} | {EscapeTableCell(evidence?.Message ?? "-")} |");
+            builder.AppendLine($"| {step.Number} | {EscapeMarkdown(step.Description)} | {step.Status} | {EscapeTableCell(step.Evidence)} |");
         }
 
         builder.AppendLine();
@@ -114,6 +121,27 @@ public sealed class AutomationVerificationReportService
 
         File.WriteAllText(path, builder.ToString(), Encoding.UTF8);
         return path;
+    }
+
+    private static IReadOnlyList<StepReportRow> BuildStepResults(IReadOnlyCollection<AutomationLogEntry> logs)
+    {
+        return StepDescriptions
+            .Select((description, index) =>
+            {
+                var stepNumber = index + 1;
+                var marker = $"[{stepNumber:00}/30]";
+                var stepLogs = logs.Where(entry => entry.Message.Contains(marker, StringComparison.Ordinal)).ToArray();
+                var error = stepLogs.LastOrDefault(entry => entry.Level == "오류");
+                var evidence = error ?? stepLogs.LastOrDefault();
+                var status = error is not null
+                    ? "실패"
+                    : stepLogs.Length > 0
+                        ? "로그 확인"
+                        : "미확인";
+
+                return new StepReportRow(stepNumber, description, status, evidence?.Message ?? "-");
+            })
+            .ToArray();
     }
 
     private string CreateReportPath(DateTime timestamp)
@@ -140,4 +168,6 @@ public sealed class AutomationVerificationReportService
     {
         return value.Replace("\r", " ").Replace("\n", " ").Trim();
     }
+
+    private sealed record StepReportRow(int Number, string Description, string Status, string Evidence);
 }
