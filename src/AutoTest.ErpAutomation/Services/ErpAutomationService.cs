@@ -50,6 +50,7 @@ public sealed class ErpAutomationService
             await StepAsync(progress, "[04/30] 로그인 버튼만 클릭합니다.", async () =>
             {
                 await WaitForLoginPageSettleAsync(page, stepTimeout, cancellationToken);
+                await WaitForSavedLoginAutofillAsync(page, stepTimeout, progress, cancellationToken);
 
                 if (await PageContainsAnyAsync(page, loginSuccessTexts, cancellationToken))
                 {
@@ -374,6 +375,34 @@ public sealed class ErpAutomationService
         }
     }
 
+    private static async Task WaitForSavedLoginAutofillAsync(
+        IPage page,
+        TimeSpan timeout,
+        IProgress<AutomationProgress> progress,
+        CancellationToken cancellationToken)
+    {
+        if (!await PageHasCredentialFieldsAsync(page, cancellationToken))
+        {
+            return;
+        }
+
+        var waitTimeout = TimeSpan.FromMilliseconds(Math.Min(timeout.TotalMilliseconds, 3000));
+        var deadline = DateTime.UtcNow.Add(waitTimeout);
+        while (DateTime.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (await PageHasFilledCredentialFieldAsync(page, cancellationToken))
+            {
+                progress.Report(AutomationProgress.Info("저장된 로그인 정보 자동 채움을 확인했습니다."));
+                return;
+            }
+
+            await Task.Delay(250, cancellationToken);
+        }
+
+        progress.Report(AutomationProgress.Warning("저장된 로그인 정보 자동 채움을 확인하지 못했습니다. 아이디/비밀번호 입력 없이 로그인 버튼만 클릭합니다."));
+    }
+
     private static Task SelectByLabelAsync(IPage page, string label, string optionText, TimeSpan timeout, CancellationToken cancellationToken)
     {
         return SelectByAnyLabelAsync(page, new[] { label }, new[] { optionText }, timeout, cancellationToken);
@@ -649,6 +678,48 @@ public sealed class ErpAutomationService
         return false;
     }
 
+    private static async Task<bool> PageHasCredentialFieldsAsync(IPage page, CancellationToken cancellationToken)
+    {
+        foreach (var frame in page.Frames)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                if (await frame.EvaluateAsync<bool>(CredentialFieldsScript("controls.length > 0")))
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // Some transient frames can disappear while the ERP screen is changing.
+            }
+        }
+
+        return false;
+    }
+
+    private static async Task<bool> PageHasFilledCredentialFieldAsync(IPage page, CancellationToken cancellationToken)
+    {
+        foreach (var frame in page.Frames)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                if (await frame.EvaluateAsync<bool>(CredentialFieldsScript("controls.length > 0 && controls.every(control => String(control.value || '').trim().length > 0)")))
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // Some transient frames can disappear while the ERP screen is changing.
+            }
+        }
+
+        return false;
+    }
+
     private static async Task<bool> PageHasExpectedValuesNearLabelsAsync(
         IPage page,
         IReadOnlyCollection<object> expectations,
@@ -774,6 +845,38 @@ public sealed class ErpAutomationService
         }
 
         return false;
+    }
+
+    private static string CredentialFieldsScript(string returnExpression)
+    {
+        return
+            @"() => {
+                const normalizeKey = value => String(value || '').replace(/[\s()[\]{}<>\/\\:_-]/g, '').toLowerCase();
+                const visible = element => {
+                    const style = window.getComputedStyle(element);
+                    const rect = element.getBoundingClientRect();
+                    return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+                };
+                const isCredentialControl = control => {
+                    const attrs = [
+                        control.getAttribute('type'),
+                        control.getAttribute('name'),
+                        control.getAttribute('id'),
+                        control.getAttribute('autocomplete'),
+                        control.getAttribute('placeholder'),
+                        control.getAttribute('aria-label')
+                    ].map(normalizeKey).join(' ');
+                    return attrs.includes('password')
+                        || attrs.includes('passwd')
+                        || attrs.includes('pwd')
+                        || attrs.includes('username')
+                        || attrs.includes('userid')
+                        || attrs.includes('loginid');
+                };
+                const controls = Array.from(document.querySelectorAll('input:not([type=hidden])'))
+                    .filter(control => visible(control) && isCredentialControl(control));
+                return " + returnExpression + @";
+            }";
     }
 
     private static async Task<bool> PageContainsLineResultRowAsync(
