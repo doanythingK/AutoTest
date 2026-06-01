@@ -12,6 +12,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly ErpAutomationService _erpAutomationService;
     private readonly AutomationSettingsService _settingsService;
     private readonly AutomationRunLogService _runLogService;
+    private readonly FolderOpenService _folderOpenService;
     private CancellationTokenSource? _automationCancellation;
     private string? _currentRunLogPath;
 
@@ -64,12 +65,14 @@ public partial class MainWindowViewModel : ObservableObject
         ChromeConnectionService chromeConnectionService,
         ErpAutomationService erpAutomationService,
         AutomationSettingsService settingsService,
-        AutomationRunLogService runLogService)
+        AutomationRunLogService runLogService,
+        FolderOpenService folderOpenService)
     {
         _chromeConnectionService = chromeConnectionService;
         _erpAutomationService = erpAutomationService;
         _settingsService = settingsService;
         _runLogService = runLogService;
+        _folderOpenService = folderOpenService;
 
         var settings = _settingsService.Load();
         ChromePath = settings.ChromePath;
@@ -149,6 +152,18 @@ public partial class MainWindowViewModel : ObservableObject
         _settingsService.Save(settings);
         AddInfo($"Chrome 설정을 저장했습니다: {_settingsService.SettingsPath}");
         StatusMessage = "Chrome 설정 저장 완료";
+    }
+
+    [RelayCommand]
+    private void OpenRunLogFolder()
+    {
+        OpenFolder(_runLogService.LogDirectory, "실행 로그 폴더");
+    }
+
+    [RelayCommand]
+    private void OpenFailureFolder()
+    {
+        OpenFolder(ErpAutomationService.FailureDirectory, "실패 자료 폴더");
     }
 
     [RelayCommand(CanExecute = nameof(CanRunAutomation))]
@@ -337,6 +352,21 @@ public partial class MainWindowViewModel : ObservableObject
             {
                 // 화면 로그는 유지하고 파일 로그 저장 실패만 무시한다.
             }
+        }
+    }
+
+    private void OpenFolder(string path, string name)
+    {
+        try
+        {
+            _folderOpenService.OpenFolder(path);
+            AddInfo($"{name}를 열었습니다: {path}");
+            StatusMessage = $"{name} 열기 완료";
+        }
+        catch (Exception ex)
+        {
+            AddError($"{name} 열기 실패: {ex.Message}");
+            StatusMessage = $"{name} 열기 실패";
         }
     }
 }

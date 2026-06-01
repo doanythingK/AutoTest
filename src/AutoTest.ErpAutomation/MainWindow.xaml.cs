@@ -13,6 +13,7 @@ public partial class MainWindow : Window
             new ChromeConnectionService(),
             new ErpAutomationService(),
             new AutomationSettingsService(),
-            new AutomationRunLogService());
+            new AutomationRunLogService(),
+            new FolderOpenService());
     }
 }

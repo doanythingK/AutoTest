@@ -46,6 +46,8 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 %LOCALAPPDATA%\AutoTest.ErpAutomation\RunLogs
 ```
 
+WPF 화면의 `로그 폴더 열기`, `실패 자료 열기` 버튼으로 실행 로그와 실패 화면 저장 폴더를 바로 열 수 있습니다.
+
 공급가액, 세액, 수량, 단가 검증은 ERP 화면 텍스트에서 콤마와 공백을 제거한 뒤 비교합니다.
 
 ## 구현 메모

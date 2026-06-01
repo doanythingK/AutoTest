@@ -8,6 +8,11 @@ public sealed class ErpAutomationService
 {
     private const string LoginUrl = "https://ibcenter.co.kr/erp/erp/erplogin/erplogin_dispatch.jsp";
 
+    public static string FailureDirectory { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "AutoTest.ErpAutomation",
+        "Failures");
+
     public async Task RunAsync(
         AutomationInput input,
         AutomationSettings settings,
@@ -517,15 +522,11 @@ public sealed class ErpAutomationService
     {
         try
         {
-            var failureDirectory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "AutoTest.ErpAutomation",
-                "Failures");
-            Directory.CreateDirectory(failureDirectory);
+            Directory.CreateDirectory(FailureDirectory);
 
             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            var screenshotPath = Path.Combine(failureDirectory, $"erp_failure_{timestamp}.png");
-            var htmlPath = Path.Combine(failureDirectory, $"erp_failure_{timestamp}.html");
+            var screenshotPath = Path.Combine(FailureDirectory, $"erp_failure_{timestamp}.png");
+            var htmlPath = Path.Combine(FailureDirectory, $"erp_failure_{timestamp}.html");
 
             await page.ScreenshotAsync(new PageScreenshotOptions
             {
