@@ -79,12 +79,12 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[12/30] 차변에서 외상매출금 [1141]을 선택합니다.", async () =>
             {
-                await SelectByLabelAsync(page, "차변", new[] { "외상매출금 [1141]", "외상매출금" }, stepTimeout, cancellationToken);
+                await SelectByAnyLabelAsync(page, new[] { "차변", "차변계정", "차변 계정" }, new[] { "외상매출금 [1141]", "외상매출금" }, stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, "[13/30] 매출구분에서 서비스(사회및개인)업 폐차처리업을 선택합니다.", async () =>
             {
-                await SelectByLabelAsync(page, "매출구분", new[] { "서비스(사회및개인)업 폐차처리업", "폐차처리업" }, stepTimeout, cancellationToken);
+                await SelectByAnyLabelAsync(page, new[] { "매출구분", "매출 구분", "구분" }, new[] { "서비스(사회및개인)업 폐차처리업", "폐차처리업" }, stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, $"[14/30] 거래처코드/명에 {input.ClientCode} 값을 입력하고 Enter를 실행합니다.", () =>
@@ -95,7 +95,7 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[16/30] 전자(세금)계산서 발송구분에서 국세청HTS를 선택합니다.", async () =>
             {
-                await SelectByLabelAsync(page, "전자(세금)계산서 발송구분", new[] { "국세청HTS", "국세청" }, stepTimeout, cancellationToken);
+                await SelectByAnyLabelAsync(page, new[] { "전자(세금)계산서 발송구분", "전자세금계산서 발송구분", "발송구분" }, new[] { "국세청HTS", "국세청" }, stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, $"[17/30] 품목코드/품목명(적요)에 {AutomationInput.ItemText}를 입력합니다.", () =>
@@ -358,7 +358,7 @@ public sealed class ErpAutomationService
 
     private static Task SelectByLabelAsync(IPage page, string label, string optionText, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        return SelectByLabelAsync(page, label, new[] { optionText }, timeout, cancellationToken);
+        return SelectByAnyLabelAsync(page, new[] { label }, new[] { optionText }, timeout, cancellationToken);
     }
 
     private static async Task SelectByLabelAsync(
@@ -368,12 +368,22 @@ public sealed class ErpAutomationService
         TimeSpan timeout,
         CancellationToken cancellationToken)
     {
+        await SelectByAnyLabelAsync(page, new[] { label }, optionTexts, timeout, cancellationToken);
+    }
+
+    private static async Task SelectByAnyLabelAsync(
+        IPage page,
+        IReadOnlyCollection<string> labels,
+        IReadOnlyCollection<string> optionTexts,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
         var quickTimeout = TimeSpan.FromMilliseconds(Math.Min(timeout.TotalMilliseconds, 2500));
         foreach (var optionText in optionTexts)
         {
             if (await TryRunInAnyFrameAsync(
                 page,
-                frame => SelectNativeByLabelInFrameAsync(frame, label, optionText),
+                frame => SelectNativeByLabelInFrameAsync(frame, labels, optionText),
                 quickTimeout,
                 cancellationToken))
             {
@@ -381,7 +391,7 @@ public sealed class ErpAutomationService
             }
         }
 
-        await RunInAnyFrameAsync(page, frame => OpenDropdownByLabelInFrameAsync(frame, label), $"'{label}' 드롭다운 열기", timeout, cancellationToken);
+        await RunInAnyFrameAsync(page, frame => OpenDropdownByLabelInFrameAsync(frame, labels), $"'{string.Join("' 또는 '", labels)}' 드롭다운 열기", timeout, cancellationToken);
 
         foreach (var optionText in optionTexts)
         {
@@ -395,7 +405,7 @@ public sealed class ErpAutomationService
             }
         }
 
-        throw new TimeoutException($"'{label}' 드롭다운에서 다음 옵션을 찾지 못했습니다: {string.Join(", ", optionTexts)}");
+        throw new TimeoutException($"'{string.Join("' 또는 '", labels)}' 드롭다운에서 다음 옵션을 찾지 못했습니다: {string.Join(", ", optionTexts)}");
     }
 
     private static async Task WaitUntilAnyTextAsync(IPage page, IReadOnlyCollection<string> texts, TimeSpan timeout, CancellationToken cancellationToken)
@@ -1171,19 +1181,20 @@ public sealed class ErpAutomationService
             new { labels, values, preferLowerArea, preferWideControl });
     }
 
-    private static Task<bool> SelectNativeByLabelInFrameAsync(IFrame frame, string label, string optionText)
+    private static Task<bool> SelectNativeByLabelInFrameAsync(IFrame frame, IReadOnlyCollection<string> labels, string optionText)
     {
         return frame.EvaluateAsync<bool>(
-            @"({ label, optionText }) => {
+            @"({ labels, optionText }) => {
                 const normalize = item => (item || '').replace(/\s+/g, ' ').trim();
                 const normalizeOption = item => normalize(item).replace(/[,\s()[\]{}<>\/\\:_-]/g, '');
                 const normalizeKey = item => normalize(item).replace(/[\s()[\]{}<>\/\\:_-]/g, '');
-                const targetKey = normalizeKey(label);
+                const targetKeys = Array.from(labels || []).map(normalizeKey).filter(key => key.length >= 2);
                 const optionKey = normalizeOption(optionText);
                 const matchesLabel = element => {
                     const key = normalizeKey(element.innerText || element.textContent || element.value || element.title);
                     if (!key || key.length < 2) return false;
-                    return key.includes(targetKey) || (targetKey.includes(key) && key.length >= Math.min(4, targetKey.length));
+                    return targetKeys.some(targetKey =>
+                        key.includes(targetKey) || (targetKey.includes(key) && key.length >= Math.min(4, targetKey.length)));
                 };
                 const matchesOption = item => {
                     const textKey = normalizeOption(item.text);
@@ -1215,20 +1226,21 @@ public sealed class ErpAutomationService
                 }
                 return false;
             }",
-            new { label, optionText });
+            new { labels, optionText });
     }
 
-    private static Task<bool> OpenDropdownByLabelInFrameAsync(IFrame frame, string label)
+    private static Task<bool> OpenDropdownByLabelInFrameAsync(IFrame frame, IReadOnlyCollection<string> labels)
     {
         return frame.EvaluateAsync<bool>(
-            @"(label) => {
+            @"(labels) => {
                 const normalize = item => (item || '').replace(/\s+/g, ' ').trim();
                 const normalizeKey = item => normalize(item).replace(/[\s()[\]{}<>\/\\:_-]/g, '');
-                const targetKey = normalizeKey(label);
+                const targetKeys = Array.from(labels || []).map(normalizeKey).filter(key => key.length >= 2);
                 const matchesLabel = element => {
                     const key = normalizeKey(element.innerText || element.textContent || element.value || element.title);
                     if (!key || key.length < 2) return false;
-                    return key.includes(targetKey) || (targetKey.includes(key) && key.length >= Math.min(4, targetKey.length));
+                    return targetKeys.some(targetKey =>
+                        key.includes(targetKey) || (targetKey.includes(key) && key.length >= Math.min(4, targetKey.length)));
                 };
                 const visible = element => {
                     const style = window.getComputedStyle(element);
@@ -1261,7 +1273,7 @@ public sealed class ErpAutomationService
                 }
                 return false;
             }",
-            label);
+            labels);
     }
 
     private static async Task SaveFailureArtifactsAsync(IPage page, IProgress<AutomationProgress> progress)
