@@ -99,10 +99,10 @@ public sealed class ErpAutomationService
                 FillNearLabelAsync(page, "품목코드/품목명(적요)", AutomationInput.ItemText, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true, preferWideControl: true));
 
             await StepAsync(progress, $"[18/30] 수량에 {input.QuantityText} 값을 입력합니다.", () =>
-                FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true));
+                FillNearLabelAsync(page, "수량", input.QuantityInputCandidates, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true));
 
             await StepAsync(progress, $"[19/30] 단가에 {input.UnitPriceText} 값을 입력합니다.", () =>
-                FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true));
+                FillNearLabelAsync(page, "단가", input.UnitPriceInputCandidates, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true));
 
             await StepAsync(progress, "[20/30] 계산 버튼을 클릭합니다.", () => ClickTextAsync(page, "계산", stepTimeout, cancellationToken));
 
@@ -118,8 +118,8 @@ public sealed class ErpAutomationService
                 if (hasZeroAmount || !ok)
                 {
                     progress.Report(AutomationProgress.Warning("공급가액/세액이 0이거나 기대값을 찾지 못했습니다. 수량과 단가를 다시 입력한 뒤 계산을 재시도합니다."));
-                    await FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true);
-                    await FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true);
+                    await FillNearLabelAsync(page, "수량", input.QuantityInputCandidates, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true);
+                    await FillNearLabelAsync(page, "단가", input.UnitPriceInputCandidates, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true);
                     await ClickTextAsync(page, "계산", stepTimeout, cancellationToken);
                 }
 
@@ -1053,6 +1053,7 @@ public sealed class ErpAutomationService
                     ].filter(Boolean).join(' '));
                     const find = pattern => values.find(item => pattern.test(item)) || values[0];
                     if (type === 'date') return find(/^\d{4}-\d{2}-\d{2}$/);
+                    if (type === 'number') return find(/^-?\d+(\.\d+)?$/);
                     if (hint.includes('.')) return find(/^\d{4}\.\d{2}\.\d{2}$/);
                     if (hint.includes('-')) return find(/^\d{4}-\d{2}-\d{2}$/);
                     if (control.maxLength === 8 || hint.includes('8')) return find(/^\d{8}$/);

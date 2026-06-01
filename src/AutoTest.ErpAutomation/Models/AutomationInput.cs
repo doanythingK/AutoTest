@@ -28,11 +28,15 @@ public sealed record AutomationInput(
 
     public string QuantityPlainText => FormatPlainNumber(Quantity);
 
+    public IReadOnlyCollection<string> QuantityInputCandidates => Unique(QuantityText, QuantityPlainText);
+
     public string QuantitySearchText => NormalizeNumberText(QuantityText);
 
     public string UnitPriceText => FormatNumber(UnitPrice);
 
     public string UnitPricePlainText => FormatPlainNumber(UnitPrice);
+
+    public IReadOnlyCollection<string> UnitPriceInputCandidates => Unique(UnitPriceText, UnitPricePlainText);
 
     public string UnitPriceSearchText => NormalizeNumberText(UnitPriceText);
 
