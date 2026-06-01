@@ -150,6 +150,8 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanRunAutomation))]
     private async Task RunAutomationAsync()
     {
+        TransactionDate = DateTime.Today;
+
         if (!TryCreateInput(out var input, out var error))
         {
             AddWarning(error);
