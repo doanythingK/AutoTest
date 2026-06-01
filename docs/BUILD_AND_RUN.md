@@ -51,6 +51,18 @@ AutoTest.ErpAutomation-win-x64.zip
 3. WPF 앱에서 `Chrome 실행` 또는 `Chrome 연결 확인`을 먼저 사용한다.
 4. 원격 디버깅 포트 기본값은 `9222`이다.
 
+운영 PC에서 아래 스크립트로 게시 실행 파일, .NET Desktop Runtime, Chrome 실행 파일, Chrome 원격 디버깅 포트, CDP 탭 목록을 한 번에 확인할 수 있다.
+
+```powershell
+.\scripts\check-live-ready.ps1
+```
+
+개발 PC처럼 Chrome 원격 디버깅 포트가 아직 열려 있지 않은 상태에서 출력만 확인하려면 아래처럼 실행한다.
+
+```powershell
+.\scripts\check-live-ready.ps1 -WarnOnly
+```
+
 ## 운영 데이터 위치
 
 앱 실행 중 생성되는 설정, 로그, 실패 자료는 저장소나 게시 폴더가 아니라 아래 로컬 경로에 저장된다.
