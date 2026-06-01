@@ -19,31 +19,37 @@ public sealed record AutomationInput(
 
     public string QuantityPlainText => FormatPlainNumber(Quantity);
 
+    public string QuantitySearchText => NormalizeNumberText(QuantityText);
+
     public string UnitPriceText => FormatNumber(UnitPrice);
 
     public string UnitPricePlainText => FormatPlainNumber(UnitPrice);
+
+    public string UnitPriceSearchText => NormalizeNumberText(UnitPriceText);
 
     public string SupplyAmountText => FormatNumber(SupplyAmount);
 
     public string SupplyAmountPlainText => FormatPlainNumber(SupplyAmount);
 
+    public string SupplyAmountSearchText => NormalizeNumberText(SupplyAmountText);
+
     public string TaxAmountText => FormatNumber(TaxAmount);
 
     public string TaxAmountPlainText => FormatPlainNumber(TaxAmount);
 
-    public IReadOnlyCollection<string> QuantityCandidates => Unique(QuantityText, QuantityPlainText);
+    public string TaxAmountSearchText => NormalizeNumberText(TaxAmountText);
 
-    public IReadOnlyCollection<string> UnitPriceCandidates => Unique(UnitPriceText, UnitPricePlainText);
+    public IReadOnlyCollection<string> QuantityCandidates => Unique(QuantitySearchText);
 
-    public IReadOnlyCollection<string> SupplyAmountCandidates => Unique(SupplyAmountText, SupplyAmountPlainText);
+    public IReadOnlyCollection<string> UnitPriceCandidates => Unique(UnitPriceSearchText);
 
-    public IReadOnlyCollection<string> TaxAmountCandidates => Unique(TaxAmountText, TaxAmountPlainText);
+    public IReadOnlyCollection<string> SupplyAmountCandidates => Unique(SupplyAmountSearchText);
+
+    public IReadOnlyCollection<string> TaxAmountCandidates => Unique(TaxAmountSearchText);
 
     public IReadOnlyCollection<string> CalculationResultCandidates => Unique(
-        SupplyAmountText,
-        SupplyAmountPlainText,
-        TaxAmountText,
-        TaxAmountPlainText);
+        SupplyAmountSearchText,
+        TaxAmountSearchText);
 
     public IReadOnlyCollection<IReadOnlyCollection<string>> CalculationResultGroups => new[]
     {
@@ -53,14 +59,10 @@ public sealed record AutomationInput(
 
     public IReadOnlyCollection<string> LineResultCandidates => Unique(
         ItemText,
-        QuantityText,
-        QuantityPlainText,
-        UnitPriceText,
-        UnitPricePlainText,
-        SupplyAmountText,
-        SupplyAmountPlainText,
-        TaxAmountText,
-        TaxAmountPlainText);
+        QuantitySearchText,
+        UnitPriceSearchText,
+        SupplyAmountSearchText,
+        TaxAmountSearchText);
 
     public IReadOnlyCollection<IReadOnlyCollection<string>> LineResultGroups => new[]
     {
@@ -149,5 +151,10 @@ public sealed record AutomationInput(
     private static IReadOnlyCollection<string> Unique(params string[] values)
     {
         return values.Where(value => !string.IsNullOrWhiteSpace(value)).Distinct().ToArray();
+    }
+
+    private static string NormalizeNumberText(string value)
+    {
+        return value.Replace(",", string.Empty).Replace(" ", string.Empty);
     }
 }

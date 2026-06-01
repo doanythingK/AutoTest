@@ -46,7 +46,7 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 %LOCALAPPDATA%\AutoTest.ErpAutomation\RunLogs
 ```
 
-공급가액, 세액, 수량, 단가 검증은 ERP 화면의 콤마 표기와 무콤마 표기를 모두 허용합니다.
+공급가액, 세액, 수량, 단가 검증은 ERP 화면 텍스트에서 콤마와 공백을 제거한 뒤 비교합니다.
 
 ## 구현 메모
 

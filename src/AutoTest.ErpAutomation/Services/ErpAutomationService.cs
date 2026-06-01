@@ -260,7 +260,9 @@ public sealed class ErpAutomationService
                 var found = await frame.EvaluateAsync<bool>(
                     @"(groups) => {
                         const bodyText = (document.body?.innerText || '').replace(/\s+/g, ' ');
-                        return groups.every(group => group.some(text => bodyText.includes(text)));
+                        const normalizedBodyText = bodyText.replace(/[,\s]/g, '');
+                        const normalize = value => String(value || '').replace(/[,\s]/g, '');
+                        return groups.every(group => group.some(text => normalizedBodyText.includes(normalize(text))));
                     }",
                     groups);
                 if (found)
