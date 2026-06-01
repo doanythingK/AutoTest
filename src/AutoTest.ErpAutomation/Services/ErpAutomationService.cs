@@ -1567,6 +1567,8 @@ public sealed class ErpAutomationService
         builder.AppendLine($"<dt>Expected supply amount</dt><dd>{WebUtility.HtmlEncode(input.SupplyAmountText)}</dd>");
         builder.AppendLine($"<dt>Expected tax amount</dt><dd>{WebUtility.HtmlEncode(input.TaxAmountText)}</dd>");
         builder.AppendLine("</dl>");
+        builder.AppendLine("<h2>Visible control summary</h2>");
+        builder.AppendLine("<p>Values from password or credential-looking fields are masked.</p>");
 
         var index = 1;
         foreach (var frame in page.Frames)
@@ -1574,6 +1576,19 @@ public sealed class ErpAutomationService
             builder.AppendLine("<hr>");
             builder.AppendLine($"<h2>Frame {index}</h2>");
             builder.AppendLine($"<p>URL: {WebUtility.HtmlEncode(frame.Url)}</p>");
+
+            try
+            {
+                var summary = await BuildVisibleControlSummaryAsync(frame);
+                builder.AppendLine("<h3>Visible controls</h3>");
+                builder.AppendLine("<pre>");
+                builder.AppendLine(WebUtility.HtmlEncode(summary));
+                builder.AppendLine("</pre>");
+            }
+            catch (Exception ex)
+            {
+                builder.AppendLine($"<p>Visible control summary failed: {WebUtility.HtmlEncode(ex.Message)}</p>");
+            }
 
             try
             {
@@ -1591,5 +1606,72 @@ public sealed class ErpAutomationService
 
         builder.AppendLine("</body></html>");
         return builder.ToString();
+    }
+
+    private static async Task<string> BuildVisibleControlSummaryAsync(IFrame frame)
+    {
+        var lines = await frame.EvaluateAsync<string[]>(
+            @"() => {
+                const normalize = value => String(value || '').replace(/\s+/g, ' ').trim();
+                const shorten = value => {
+                    const text = normalize(value);
+                    return text.length > 120 ? `${text.slice(0, 117)}...` : text;
+                };
+                const normalizeKey = value => normalize(value).replace(/[\s()[\]{}<>\/\\:_-]/g, '').toLowerCase();
+                const visible = element => {
+                    const style = window.getComputedStyle(element);
+                    const rect = element.getBoundingClientRect();
+                    return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+                };
+                const isCredentialControl = element => {
+                    const attrs = [
+                        element.getAttribute('type'),
+                        element.getAttribute('name'),
+                        element.getAttribute('id'),
+                        element.getAttribute('autocomplete'),
+                        element.getAttribute('placeholder'),
+                        element.getAttribute('aria-label')
+                    ].map(normalizeKey).join(' ');
+                    return attrs.includes('password')
+                        || attrs.includes('passwd')
+                        || attrs.includes('pwd')
+                        || attrs.includes('currentpassword')
+                        || attrs.includes('newpassword')
+                        || attrs.includes('username')
+                        || attrs.includes('userid')
+                        || attrs.includes('loginid');
+                };
+                const valueOf = element => {
+                    if (isCredentialControl(element)) return '(masked)';
+                    const tag = element.tagName.toLowerCase();
+                    if (tag === 'select') {
+                        return Array.from(element.selectedOptions || []).map(option => option.text).filter(Boolean).join(' | ');
+                    }
+                    return element.value || element.innerText || element.textContent || element.title || element.getAttribute('aria-label') || '';
+                };
+                const describe = element => {
+                    const rect = element.getBoundingClientRect();
+                    const parts = [
+                        element.tagName.toLowerCase(),
+                        element.getAttribute('role') ? `role=${element.getAttribute('role')}` : '',
+                        element.getAttribute('type') ? `type=${element.getAttribute('type')}` : '',
+                        element.id ? `id=${element.id}` : '',
+                        element.getAttribute('name') ? `name=${element.getAttribute('name')}` : '',
+                        element.getAttribute('aria-label') ? `aria=${shorten(element.getAttribute('aria-label'))}` : '',
+                        element.getAttribute('placeholder') ? `placeholder=${shorten(element.getAttribute('placeholder'))}` : '',
+                        `text=${shorten(valueOf(element))}`,
+                        `rect=${Math.round(rect.left)},${Math.round(rect.top)},${Math.round(rect.width)}x${Math.round(rect.height)}`
+                    ].filter(Boolean);
+                    return parts.join(' | ');
+                };
+                const controls = Array.from(document.querySelectorAll('button, a, input:not([type=hidden]), textarea, select, [role=button], [role=menuitem], [role=combobox], [aria-haspopup], td, th, span, div'))
+                    .filter(visible)
+                    .map(describe)
+                    .filter(line => line.includes('text=') && !line.endsWith('text='))
+                    .slice(0, 180);
+                return controls.length > 0 ? controls : ['(no visible controls found)'];
+            }");
+
+        return string.Join(Environment.NewLine, lines);
     }
 }
