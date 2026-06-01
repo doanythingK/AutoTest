@@ -9,6 +9,7 @@ namespace AutoTest.ErpAutomation.Services;
 public sealed class ErpAutomationService
 {
     private const string LoginUrl = "https://ibcenter.co.kr/erp/erp/erplogin/erplogin_dispatch.jsp";
+    private const string CredentialScreenshotMaskStyleId = "autotest-credential-screenshot-mask";
 
     public static string FailureDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -1536,11 +1537,19 @@ public sealed class ErpAutomationService
 
             try
             {
-                await page.ScreenshotAsync(new PageScreenshotOptions
+                await ApplyCredentialScreenshotMaskAsync(page);
+                try
                 {
-                    Path = screenshotPath,
-                    FullPage = true
-                });
+                    await page.ScreenshotAsync(new PageScreenshotOptions
+                    {
+                        Path = screenshotPath,
+                        FullPage = true
+                    });
+                }
+                finally
+                {
+                    await RemoveCredentialScreenshotMaskAsync(page);
+                }
 
                 progress.Report(AutomationProgress.Warning($"실패 화면을 저장했습니다: {screenshotPath}"));
             }
@@ -1589,6 +1598,72 @@ public sealed class ErpAutomationService
     }
 
     private sealed record FailureArtifactPaths(string ScreenshotPath, string HtmlPath);
+
+    private static async Task ApplyCredentialScreenshotMaskAsync(IPage page)
+    {
+        foreach (var frame in page.Frames)
+        {
+            try
+            {
+                await frame.EvaluateAsync(
+                    @"(styleId) => {
+                        if (document.getElementById(styleId)) return;
+                        const style = document.createElement('style');
+                        style.id = styleId;
+                        style.textContent = `
+                            input[type='password'],
+                            input[name*='password' i],
+                            input[id*='password' i],
+                            input[autocomplete*='password' i],
+                            input[name*='passwd' i],
+                            input[id*='passwd' i],
+                            input[name*='pwd' i],
+                            input[id*='pwd' i],
+                            input[name*='username' i],
+                            input[id*='username' i],
+                            input[autocomplete*='username' i],
+                            input[name*='userid' i],
+                            input[id*='userid' i],
+                            input[name*='loginid' i],
+                            input[id*='loginid' i],
+                            textarea[name*='password' i],
+                            textarea[id*='password' i] {
+                                color: transparent !important;
+                                text-shadow: none !important;
+                                caret-color: transparent !important;
+                                background: #111 !important;
+                                border-color: #111 !important;
+                            }
+                        `;
+                        (document.head || document.documentElement).appendChild(style);
+                    }",
+                    CredentialScreenshotMaskStyleId);
+            }
+            catch
+            {
+                // Some transient frames can disappear while the ERP screen is changing.
+            }
+        }
+    }
+
+    private static async Task RemoveCredentialScreenshotMaskAsync(IPage page)
+    {
+        foreach (var frame in page.Frames)
+        {
+            try
+            {
+                await frame.EvaluateAsync(
+                    @"(styleId) => {
+                        document.getElementById(styleId)?.remove();
+                    }",
+                    CredentialScreenshotMaskStyleId);
+            }
+            catch
+            {
+                // Some transient frames can disappear while the ERP screen is changing.
+            }
+        }
+    }
 
     private static async Task<string> GetPageTitleAsync(IPage page)
     {
