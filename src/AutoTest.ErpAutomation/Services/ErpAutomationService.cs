@@ -114,16 +114,7 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[23/30] 라인저장 전 입력값과 계산 결과를 확인한 뒤 라인저장(L) 버튼을 클릭합니다.", async () =>
             {
-                await WaitUntilAllGroupsAsync(
-                    page,
-                    new IReadOnlyCollection<string>[]
-                    {
-                        new[] { AutomationInput.ItemText },
-                        input.SupplyAmountCandidates,
-                        input.TaxAmountCandidates
-                    },
-                    stepTimeout,
-                    cancellationToken);
+                await WaitUntilAllGroupsAsync(page, input.BeforeLineSaveGroups, stepTimeout, cancellationToken);
                 await ClickTextAsync(page, "라인저장", stepTimeout, cancellationToken);
             });
 

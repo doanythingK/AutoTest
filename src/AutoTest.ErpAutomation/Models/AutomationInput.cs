@@ -57,6 +57,15 @@ public sealed record AutomationInput(
         TaxAmountCandidates
     };
 
+    public IReadOnlyCollection<IReadOnlyCollection<string>> BeforeLineSaveGroups => new[]
+    {
+        new[] { ItemText },
+        QuantityCandidates,
+        UnitPriceCandidates,
+        SupplyAmountCandidates,
+        TaxAmountCandidates
+    };
+
     public IReadOnlyCollection<string> LineResultCandidates => Unique(
         ItemText,
         QuantitySearchText,
