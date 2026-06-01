@@ -420,7 +420,7 @@ public sealed class ErpAutomationService
         while (DateTime.UtcNow < deadline)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (await PageHasAnyFilledCredentialFieldAsync(page, cancellationToken))
+            if (await PageHasAllFilledCredentialFieldsAsync(page, cancellationToken))
             {
                 progress.Report(AutomationProgress.Info("저장된 로그인 정보 자동 채움을 확인했습니다."));
                 return;
@@ -801,14 +801,14 @@ public sealed class ErpAutomationService
         return false;
     }
 
-    private static async Task<bool> PageHasAnyFilledCredentialFieldAsync(IPage page, CancellationToken cancellationToken)
+    private static async Task<bool> PageHasAllFilledCredentialFieldsAsync(IPage page, CancellationToken cancellationToken)
     {
         foreach (var frame in page.Frames)
         {
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                if (await frame.EvaluateAsync<bool>(CredentialFieldsScript("controls.some(control => String(control.value || '').trim().length > 0)")))
+                if (await frame.EvaluateAsync<bool>(CredentialFieldsScript("controls.length > 0 && controls.every(control => String(control.value || '').trim().length > 0)")))
                 {
                     return true;
                 }
