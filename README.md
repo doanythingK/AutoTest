@@ -58,6 +58,7 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 - 자동화 실행 로그는 `%LOCALAPPDATA%\AutoTest.ErpAutomation\RunLogs`에 저장한다.
 - Chrome 연결 확인에 실패하면 ERP 페이지 이동 전에 자동화를 중단한다.
 - 로그인 성공 여부는 `회계관리`, `로그아웃`처럼 로그인 후 화면에서 기대되는 문구로 확인한다.
+- 거래전기/원장전기는 `완료` 단독 문구가 아니라 전기 동작명이 포함된 완료 문구로 확인한다.
 - ERP 응답이 느린 환경에서는 `Chrome 연결 설정`의 단계 대기 시간 값을 늘릴 수 있다.
 - 계산 후 공급가액/세액 주변 값이 `0`으로 감지되면 수량과 단가를 다시 입력하고 계산을 재시도한다.
 - 자동화 실패 시 `%LOCALAPPDATA%\AutoTest.ErpAutomation\Failures`에 화면 PNG와 HTML을 저장한다.
