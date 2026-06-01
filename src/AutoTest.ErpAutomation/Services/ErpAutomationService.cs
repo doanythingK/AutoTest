@@ -2007,6 +2007,8 @@ public sealed class ErpAutomationService
         builder.AppendLine($"<dt>Last automation step</dt><dd>{WebUtility.HtmlEncode(FormatFailureStep(lastAutomationStep))}</dd>");
         builder.AppendLine($"<dt>Error type</dt><dd>{WebUtility.HtmlEncode(failure.GetType().Name)}</dd>");
         builder.AppendLine($"<dt>Error message</dt><dd>{WebUtility.HtmlEncode(failure.Message)}</dd>");
+        builder.AppendLine($"<dt>App version</dt><dd>{WebUtility.HtmlEncode(AppBuildInfoService.GetAppVersion())}</dd>");
+        builder.AppendLine($"<dt>Source revision</dt><dd>{WebUtility.HtmlEncode(AppBuildInfoService.GetSourceRevision())}</dd>");
         builder.AppendLine("</dl>");
         builder.AppendLine($"<p>Page title: {WebUtility.HtmlEncode(await GetPageTitleAsync(page))}</p>");
         builder.AppendLine($"<p>Page URL: {WebUtility.HtmlEncode(page.Url)}</p>");

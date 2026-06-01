@@ -1,5 +1,4 @@
 using System.IO;
-using System.Reflection;
 using System.Text;
 using AutoTest.ErpAutomation.Models;
 
@@ -20,7 +19,8 @@ public sealed class AutomationRunLogService
         var builder = new StringBuilder();
         builder.AppendLine("ERP 매출등록 자동화 실행 로그");
         builder.AppendLine($"시작시각: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-        builder.AppendLine($"앱 버전: {GetAppVersion()}");
+        builder.AppendLine($"앱 버전: {AppBuildInfoService.GetAppVersion()}");
+        builder.AppendLine($"소스 커밋: {AppBuildInfoService.GetSourceRevision()}");
         builder.AppendLine($"거래일자: {input.TransactionDateText}");
         builder.AppendLine($"수량: {input.QuantityText}");
         builder.AppendLine($"단가: {input.UnitPriceText}");
@@ -58,21 +58,6 @@ public sealed class AutomationRunLogService
         return string.IsNullOrWhiteSpace(value)
             ? "(자동 탐색)"
             : value;
-    }
-
-    private static string GetAppVersion()
-    {
-        var assembly = typeof(AutomationRunLogService).Assembly;
-        var informationalVersion = assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion;
-
-        if (!string.IsNullOrWhiteSpace(informationalVersion))
-        {
-            return informationalVersion;
-        }
-
-        return assembly.GetName().Version?.ToString() ?? "(알 수 없음)";
     }
 
     private string CreateRunLogPath(DateTime timestamp)
