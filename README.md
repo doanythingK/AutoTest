@@ -58,3 +58,7 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 - 자동화 실행 로그는 `%LOCALAPPDATA%\AutoTest.ErpAutomation\RunLogs`에 저장한다.
 - Chrome 연결 확인에 실패하면 ERP 페이지 이동 전에 자동화를 중단한다.
 - 자동화 실패 시 `%LOCALAPPDATA%\AutoTest.ErpAutomation\Failures`에 화면 PNG와 HTML을 저장한다.
+
+## 저장소 관리
+
+빌드 산출물, 로컬 설정, 실행 로그, 실패 화면 자료는 저장소에 커밋하지 않습니다. 실행 중 생성되는 파일은 `%LOCALAPPDATA%\AutoTest.ErpAutomation` 아래에 보관합니다.

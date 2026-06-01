@@ -51,3 +51,9 @@ Chrome 설정은 WPF 화면의 `Chrome 연결 설정` 영역에서 수정하고 
 - 실제 ERP DOM 확인 후 주요 필드 selector 고정
 - 자동화 단계별 대기 시간 설정
 - 라인 목록 검증 전용 selector 추가
+
+## 저장소 제외 정책
+
+- `bin/`, `obj/`, `publish/`, `artifacts/`는 빌드 산출물이므로 제외한다.
+- `%LOCALAPPDATA%\AutoTest.ErpAutomation`에 저장되는 설정, 실행 로그, 실패 화면 자료는 로컬 운영 데이터로 취급한다.
+- 저장소에는 WPF 소스, 요구사항 문서, 구현 문서만 유지한다.
