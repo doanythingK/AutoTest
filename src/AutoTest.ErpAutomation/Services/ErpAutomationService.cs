@@ -121,7 +121,8 @@ public sealed class ErpAutomationService
                     new[] { input.ClientCode },
                     pressEnter: true,
                     stepTimeout,
-                    cancellationToken));
+                    cancellationToken,
+                    verifyBeforeEnter: true));
 
             await StepAsync(progress, "[15/30] 담당부서에 20을 입력하고 Enter를 실행합니다.", () =>
                 FillNearAnyLabelAndVerifyAsync(
@@ -132,7 +133,8 @@ public sealed class ErpAutomationService
                     new[] { "20" },
                     pressEnter: true,
                     stepTimeout,
-                    cancellationToken));
+                    cancellationToken,
+                    verifyBeforeEnter: true));
 
             await StepAsync(progress, "[16/30] 전자(세금)계산서 발송구분에서 국세청HTS를 선택합니다.", async () =>
             {
@@ -197,7 +199,8 @@ public sealed class ErpAutomationService
                     pressEnter: true,
                     stepTimeout,
                     cancellationToken,
-                    preferLowerArea: true));
+                    preferLowerArea: true,
+                    verifyBeforeEnter: true));
 
             var beforeLineSaveExpectations = new object[]
             {
@@ -414,7 +417,8 @@ public sealed class ErpAutomationService
         TimeSpan timeout,
         CancellationToken cancellationToken,
         bool preferLowerArea = false,
-        bool preferWideControl = false)
+        bool preferWideControl = false,
+        bool verifyBeforeEnter = false)
     {
         await FillNearAnyLabelAndVerifyAsync(
             page,
@@ -426,7 +430,8 @@ public sealed class ErpAutomationService
             timeout,
             cancellationToken,
             preferLowerArea,
-            preferWideControl);
+            preferWideControl,
+            verifyBeforeEnter);
     }
 
     private static async Task FillNearAnyLabelAndVerifyAsync(
@@ -439,8 +444,18 @@ public sealed class ErpAutomationService
         TimeSpan timeout,
         CancellationToken cancellationToken,
         bool preferLowerArea = false,
-        bool preferWideControl = false)
+        bool preferWideControl = false,
+        bool verifyBeforeEnter = false)
     {
+        if (pressEnter && verifyBeforeEnter)
+        {
+            await FillNearAnyLabelAsync(page, labels, values, pressEnter: false, timeout, cancellationToken, preferLowerArea, preferWideControl);
+            await WaitUntilExpectedValuesNearAnyLabelAsync(page, verificationLabels, verificationValues, timeout, cancellationToken);
+            await page.Keyboard.PressAsync("Enter");
+            await WaitAfterEnterAsync(page, timeout, cancellationToken);
+            return;
+        }
+
         await FillNearAnyLabelAsync(page, labels, values, pressEnter, timeout, cancellationToken, preferLowerArea, preferWideControl);
         await WaitUntilExpectedValuesNearAnyLabelAsync(page, verificationLabels, verificationValues, timeout, cancellationToken);
     }
