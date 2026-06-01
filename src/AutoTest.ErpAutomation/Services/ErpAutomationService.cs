@@ -1138,16 +1138,24 @@ public sealed class ErpAutomationService
                 const normalizeKey = value => normalize(value).replace(/[\s()[\]{}<>\/\\:_-]/g, '');
                 const targetText = normalize(text);
                 const targetKey = normalizeKey(text);
+                const tokensOf = value => normalize(value)
+                    .split(/[\s()[\]{}<>\/\\:_,-]+/)
+                    .map(token => token.trim())
+                    .filter(token => token.length >= 2 || /^\d+$/.test(token));
+                const targetTokens = tokensOf(text);
                 const visible = element => {
                     const style = window.getComputedStyle(element);
                     const rect = element.getBoundingClientRect();
                     return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
                 };
                 const textOf = element => normalize(element.innerText || element.value || element.title || element.getAttribute('aria-label'));
+                const containsAllTokens = itemTokens => targetTokens.length > 0
+                    && targetTokens.every(targetToken => itemTokens.some(itemToken => itemToken.includes(targetToken) || targetToken.includes(itemToken)));
                 const matchesText = item => item.value === targetText
                     || item.value.includes(targetText)
                     || item.key.includes(targetKey)
-                    || (targetKey.includes(item.key) && item.key.length >= Math.min(4, targetKey.length));
+                    || (targetKey.includes(item.key) && item.key.length >= Math.min(4, targetKey.length))
+                    || containsAllTokens(item.tokens);
                 const isActionElement = element => {
                     const tag = element.tagName.toLowerCase();
                     const role = normalize(element.getAttribute('role')).toLowerCase();
@@ -1174,7 +1182,7 @@ public sealed class ErpAutomationService
                     .filter(visible)
                     .map(element => {
                         const value = textOf(element);
-                        return { element, value, key: normalizeKey(value), rect: element.getBoundingClientRect() };
+                        return { element, value, key: normalizeKey(value), tokens: tokensOf(value), rect: element.getBoundingClientRect() };
                     })
                     .filter(matchesText)
                     .sort((a, b) => score(a) - score(b));
@@ -1353,11 +1361,21 @@ public sealed class ErpAutomationService
                 const normalizeKey = item => normalize(item).replace(/[\s()[\]{}<>\/\\:_-]/g, '');
                 const targetKeys = Array.from(labels || []).map(normalizeKey).filter(key => key.length >= 2);
                 const optionKey = normalizeOption(optionText);
+                const tokensOf = value => normalize(value)
+                    .split(/[\s()[\]{}<>\/\\:_,-]+/)
+                    .map(token => token.trim())
+                    .filter(token => token.length >= 2 || /^\d+$/.test(token));
+                const optionTokens = tokensOf(optionText);
                 const matchesLabel = element => {
                     const key = normalizeKey(element.innerText || element.textContent || element.value || element.title);
                     if (!key || key.length < 2) return false;
                     return targetKeys.some(targetKey =>
                         key.includes(targetKey) || (targetKey.includes(key) && key.length >= Math.min(4, targetKey.length)));
+                };
+                const containsAllTokens = value => {
+                    const valueTokens = tokensOf(value);
+                    return optionTokens.length > 0
+                        && optionTokens.every(optionToken => valueTokens.some(valueToken => valueToken.includes(optionToken) || optionToken.includes(valueToken)));
                 };
                 const matchesOption = item => {
                     const textKey = normalizeOption(item.text);
@@ -1365,7 +1383,9 @@ public sealed class ErpAutomationService
                     return textKey.includes(optionKey)
                         || valueKey.includes(optionKey)
                         || (optionKey.includes(textKey) && textKey.length >= Math.min(4, optionKey.length))
-                        || (optionKey.includes(valueKey) && valueKey.length >= Math.min(4, optionKey.length));
+                        || (optionKey.includes(valueKey) && valueKey.length >= Math.min(4, optionKey.length))
+                        || containsAllTokens(item.text)
+                        || containsAllTokens(item.value);
                 };
                 const visible = element => {
                     const style = window.getComputedStyle(element);
