@@ -68,7 +68,6 @@ public partial class MainWindowViewModel : ObservableObject
     private string lastRunLogPath = string.Empty;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(OpenLastRunLogCommand))]
     private string lastRunLogFilePath = string.Empty;
 
     [ObservableProperty]
@@ -196,13 +195,15 @@ public partial class MainWindowViewModel : ObservableObject
         OpenFolder(_runLogService.LogDirectory, "실행 로그 폴더");
     }
 
-    [RelayCommand(CanExecute = nameof(CanOpenLastRunLog))]
+    [RelayCommand]
     private void OpenLastRunLog()
     {
         try
         {
-            _folderOpenService.OpenFile(LastRunLogFilePath);
-            AddInfo($"최근 실행 로그 파일을 열었습니다: {LastRunLogFilePath}");
+            var path = !string.IsNullOrWhiteSpace(LastRunLogFilePath)
+                ? OpenFile(LastRunLogFilePath)
+                : _folderOpenService.OpenLatestFile(_runLogService.LogDirectory, "erp_run_*.log");
+            AddInfo($"최근 실행 로그 파일을 열었습니다: {path}");
             StatusMessage = "최근 실행 로그 열기 완료";
         }
         catch (Exception ex)
@@ -359,11 +360,6 @@ public partial class MainWindowViewModel : ObservableObject
         return IsRunning;
     }
 
-    private bool CanOpenLastRunLog()
-    {
-        return !string.IsNullOrWhiteSpace(LastRunLogFilePath);
-    }
-
     private bool CanUseIdleCommands()
     {
         return !IsRunning;
@@ -481,6 +477,12 @@ public partial class MainWindowViewModel : ObservableObject
             AddError($"{name} 열기 실패: {ex.Message}");
             StatusMessage = $"{name} 열기 실패";
         }
+    }
+
+    private string OpenFile(string path)
+    {
+        _folderOpenService.OpenFile(path);
+        return path;
     }
 
     private void OpenLatestFailureFile(string searchPattern, string name)

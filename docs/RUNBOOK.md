@@ -76,7 +76,7 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 
 ## 로그 확인
 
-WPF의 `로그 폴더 열기` 버튼을 누르면 실행 로그 폴더가 열리고, `최근 로그 열기` 버튼을 누르면 마지막으로 생성된 실행 로그 파일이 바로 열린다.
+WPF의 `로그 폴더 열기` 버튼을 누르면 실행 로그 폴더가 열린다. `최근 로그 열기` 버튼은 현재 실행에서 만든 로그가 있으면 그 파일을 열고, 앱을 다시 켠 상태라면 로그 폴더에서 가장 최근 `erp_run_*.log` 파일을 찾아 연다.
 
 ```text
 %LOCALAPPDATA%\AutoTest.ErpAutomation\RunLogs
