@@ -53,7 +53,7 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 %LOCALAPPDATA%\AutoTest.ErpAutomation\RunLogs
 ```
 
-로그 파일에는 입력값, 예상 계산값, 실행 PC/사용자, Chrome 설정, 단계별 로그가 저장됩니다.
+로그 파일에는 입력값, 예상 계산값, 실행 PC/사용자, Chrome 설정, 단계별 로그, 최종 실행 결과가 저장됩니다.
 
 WPF 화면의 `로그 폴더 열기`, `실패 자료 열기` 버튼으로 실행 로그와 실패 화면 저장 폴더를 바로 열 수 있습니다.
 

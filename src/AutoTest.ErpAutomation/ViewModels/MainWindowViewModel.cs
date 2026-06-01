@@ -226,6 +226,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         IsRunning = true;
         StatusMessage = "자동화 실행 중";
+        var runResult = "실행 중";
 
         try
         {
@@ -237,6 +238,7 @@ public partial class MainWindowViewModel : ObservableObject
                 AddWarning($"[01/30] {chromeConnection.Message}");
                 AddChromeConnectionHelp(settings);
                 StatusMessage = "Chrome 연결 필요";
+                runResult = "Chrome 연결 실패";
                 return;
             }
 
@@ -245,21 +247,25 @@ public partial class MainWindowViewModel : ObservableObject
             var progress = new Progress<AutomationProgress>(OnAutomationProgress);
             await _erpAutomationService.RunAsync(input, settings, progress, _automationCancellation.Token);
             StatusMessage = "자동화 완료";
+            runResult = "완료";
         }
         catch (OperationCanceledException)
         {
             AddWarning("자동화가 중지되었습니다.");
             StatusMessage = "자동화 중지";
+            runResult = "중지";
         }
         catch (Exception ex)
         {
             AddError(ex.Message);
             StatusMessage = "자동화 실패";
+            runResult = "실패";
         }
         finally
         {
             if (!string.IsNullOrWhiteSpace(_currentRunLogPath))
             {
+                AddInfo($"자동화 실행 결과: {runResult}");
                 AddInfo($"실행 로그 저장 완료: {_currentRunLogPath}");
             }
 
