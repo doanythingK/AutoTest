@@ -12,6 +12,7 @@ public partial class MainWindow : Window
         DataContext = new MainWindowViewModel(
             new ChromeConnectionService(),
             new ErpAutomationService(),
-            new AutomationSettingsService());
+            new AutomationSettingsService(),
+            new AutomationRunLogService());
     }
 }

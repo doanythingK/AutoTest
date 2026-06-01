@@ -11,7 +11,9 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly ChromeConnectionService _chromeConnectionService;
     private readonly ErpAutomationService _erpAutomationService;
     private readonly AutomationSettingsService _settingsService;
+    private readonly AutomationRunLogService _runLogService;
     private CancellationTokenSource? _automationCancellation;
+    private string? _currentRunLogPath;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ExpectedSupplyAmountText))]
@@ -48,6 +50,9 @@ public partial class MainWindowViewModel : ObservableObject
     private string statusMessage = "대기 중";
 
     [ObservableProperty]
+    private string lastRunLogPath = string.Empty;
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RunAutomationCommand))]
     [NotifyCanExecuteChangedFor(nameof(CancelAutomationCommand))]
     private bool isRunning;
@@ -55,11 +60,13 @@ public partial class MainWindowViewModel : ObservableObject
     public MainWindowViewModel(
         ChromeConnectionService chromeConnectionService,
         ErpAutomationService erpAutomationService,
-        AutomationSettingsService settingsService)
+        AutomationSettingsService settingsService,
+        AutomationRunLogService runLogService)
     {
         _chromeConnectionService = chromeConnectionService;
         _erpAutomationService = erpAutomationService;
         _settingsService = settingsService;
+        _runLogService = runLogService;
 
         var settings = _settingsService.Load();
         ChromePath = settings.ChromePath;
@@ -157,11 +164,15 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        _automationCancellation?.Dispose();
+        _automationCancellation = new CancellationTokenSource();
+        _currentRunLogPath = _runLogService.StartRun(input, settings);
+        LastRunLogPath = $"로그 파일: {_currentRunLogPath}";
+
+        AddInfo($"실행 로그 파일을 생성했습니다: {_currentRunLogPath}");
         AddInfo($"입력 확인: 거래일자 {input.TransactionDateText}, 수량 {input.QuantityText}, 단가 {input.UnitPriceText}");
         AddInfo($"예상 공급가액 {input.SupplyAmountText}, 예상 세액 {input.TaxAmountText}");
 
-        _automationCancellation?.Dispose();
-        _automationCancellation = new CancellationTokenSource();
         IsRunning = true;
         StatusMessage = "자동화 실행 중";
 
@@ -183,6 +194,12 @@ public partial class MainWindowViewModel : ObservableObject
         }
         finally
         {
+            if (!string.IsNullOrWhiteSpace(_currentRunLogPath))
+            {
+                AddInfo($"실행 로그 저장 완료: {_currentRunLogPath}");
+            }
+
+            _currentRunLogPath = null;
             IsRunning = false;
         }
     }
@@ -281,6 +298,19 @@ public partial class MainWindowViewModel : ObservableObject
 
     private void AddLog(string level, string message)
     {
-        Logs.Insert(0, new AutomationLogEntry(DateTime.Now, level, message));
+        var entry = new AutomationLogEntry(DateTime.Now, level, message);
+        Logs.Insert(0, entry);
+
+        if (!string.IsNullOrWhiteSpace(_currentRunLogPath))
+        {
+            try
+            {
+                _runLogService.Append(_currentRunLogPath, entry);
+            }
+            catch
+            {
+                // 화면 로그는 유지하고 파일 로그 저장 실패만 무시한다.
+            }
+        }
     }
 }

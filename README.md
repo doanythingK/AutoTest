@@ -40,6 +40,12 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 
 자동화 로그에는 요구사항 단계와 대응되는 `[01/30]` 형식의 단계 번호가 표시됩니다.
 
+실행 1회마다 아래 경로에 별도 로그 파일을 생성합니다.
+
+```text
+%LOCALAPPDATA%\AutoTest.ErpAutomation\RunLogs
+```
+
 ## 구현 메모
 
 - ERP 화면 selector가 확정되어 있지 않아 텍스트 버튼과 라벨 주변 입력칸을 찾는 방식으로 동작한다.
@@ -47,4 +53,5 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 - ERP 화면 구조가 바뀌거나 동일한 라벨이 여러 개 있으면 정확한 selector 보강이 필요하다.
 - 프로그램은 자동화 중 기존 Chrome 탭을 닫지 않는다.
 - 로그인 아이디/비밀번호 입력 필드는 자동화 코드에서 채우지 않는다.
+- 자동화 실행 로그는 `%LOCALAPPDATA%\AutoTest.ErpAutomation\RunLogs`에 저장한다.
 - 자동화 실패 시 `%LOCALAPPDATA%\AutoTest.ErpAutomation\Failures`에 화면 PNG와 HTML을 저장한다.

@@ -9,6 +9,7 @@
 - `AutomationInput`: 입력값 검증과 예상 공급가액/세액 계산을 담당한다.
 - `ChromeConnectionService`: Chrome 원격 디버깅 포트 `9222` 연결 확인과 Chrome 실행을 담당한다.
 - `AutomationSettingsService`: Chrome 경로, 프로필 디렉터리, 원격 디버깅 포트를 `%LOCALAPPDATA%\AutoTest.ErpAutomation\settings.json`에 저장하고 불러온다.
+- `AutomationRunLogService`: 자동화 실행 1회마다 입력값, 예상 계산값, 단계 로그를 `%LOCALAPPDATA%\AutoTest.ErpAutomation\RunLogs`에 저장한다.
 - `ErpAutomationService`: Playwright CDP 연결 후 ERP 자동화 절차를 실행한다.
 
 ## 자동화 방식
@@ -16,6 +17,7 @@
 ERP 페이지의 정확한 DOM selector를 아직 고정할 수 없으므로, 현재 구현은 다음 기준으로 대상을 찾는다.
 
 - 실행 로그: 요구사항의 30단계와 맞도록 `[01/30]`부터 `[30/30]`까지 단계 번호를 표시한다.
+- 파일 로그: 실행 1회마다 별도 로그 파일을 만들고 화면 로그와 같은 내용을 append한다.
 - 버튼/메뉴: 화면 텍스트가 일치하거나 포함되는 요소 클릭
 - 클릭: 요소 중앙의 현재 화면 좌표를 계산해 pointer/mouse 이벤트를 순서대로 발생시킨다.
 - 입력칸: 라벨과 같은 행 또는 라벨 오른쪽에 있는 입력 요소 선택
