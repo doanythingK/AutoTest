@@ -227,6 +227,7 @@ public partial class MainWindowViewModel : ObservableObject
         IsRunning = true;
         StatusMessage = "자동화 실행 중";
         var runResult = "실행 중";
+        var runStopwatch = Stopwatch.StartNew();
 
         try
         {
@@ -265,7 +266,10 @@ public partial class MainWindowViewModel : ObservableObject
         {
             if (!string.IsNullOrWhiteSpace(_currentRunLogPath))
             {
+                runStopwatch.Stop();
                 AddInfo($"자동화 실행 결과: {runResult}");
+                AddInfo($"자동화 종료 시각: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                AddInfo($"자동화 소요 시간: {FormatElapsed(runStopwatch.Elapsed)}");
                 AddInfo($"실행 로그 저장 완료: {_currentRunLogPath}");
             }
 
@@ -431,5 +435,12 @@ public partial class MainWindowViewModel : ObservableObject
             AddError($"{name} 열기 실패: {ex.Message}");
             StatusMessage = $"{name} 열기 실패";
         }
+    }
+
+    private static string FormatElapsed(TimeSpan elapsed)
+    {
+        return elapsed.TotalHours >= 1
+            ? elapsed.ToString(@"h\:mm\:ss")
+            : elapsed.ToString(@"m\:ss");
     }
 }
