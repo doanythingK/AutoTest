@@ -86,6 +86,7 @@ public sealed class ErpAutomationService
                     page,
                     new[] { "차변", "차변계정", "차변 계정" },
                     new[] { "외상매출금 [1141]", "외상매출금" },
+                    new[] { "차변", "차변계정", "차변 계정" },
                     new[] { "외상매출금 [1141]", "외상매출금", "1141" },
                     stepTimeout,
                     cancellationToken);
@@ -97,6 +98,7 @@ public sealed class ErpAutomationService
                     page,
                     new[] { "매출구분", "매출 구분", "구분" },
                     new[] { "서비스(사회및개인)업 폐차처리업", "폐차처리업" },
+                    new[] { "매출구분", "매출 구분" },
                     new[] { "서비스(사회및개인)업 폐차처리업", "폐차처리업" },
                     stepTimeout,
                     cancellationToken);
@@ -114,6 +116,7 @@ public sealed class ErpAutomationService
                     page,
                     new[] { "전자(세금)계산서 발송구분", "전자세금계산서 발송구분", "발송구분" },
                     new[] { "국세청HTS", "국세청" },
+                    new[] { "전자(세금)계산서 발송구분", "전자세금계산서 발송구분", "발송구분" },
                     new[] { "국세청HTS", "국세청", "HTS" },
                     stepTimeout,
                     cancellationToken);
@@ -469,12 +472,13 @@ public sealed class ErpAutomationService
         IPage page,
         IReadOnlyCollection<string> labels,
         IReadOnlyCollection<string> optionTexts,
+        IReadOnlyCollection<string> verificationLabels,
         IReadOnlyCollection<string> verificationTexts,
         TimeSpan timeout,
         CancellationToken cancellationToken)
     {
         await SelectByAnyLabelAsync(page, labels, optionTexts, timeout, cancellationToken);
-        await WaitUntilExpectedValuesNearAnyLabelAsync(page, labels, verificationTexts, timeout, cancellationToken);
+        await WaitUntilExpectedValuesNearAnyLabelAsync(page, verificationLabels, verificationTexts, timeout, cancellationToken);
     }
 
     private static async Task SelectByAnyLabelAsync(
