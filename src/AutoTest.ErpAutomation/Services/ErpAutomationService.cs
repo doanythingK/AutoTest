@@ -46,12 +46,18 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[04/30] 로그인 버튼만 클릭합니다.", async () =>
             {
+                if (await PageContainsAnyAsync(page, new[] { "회계관리", "로그아웃" }, cancellationToken))
+                {
+                    progress.Report(AutomationProgress.Info("이미 로그인된 화면으로 판단되어 로그인 버튼 클릭을 생략합니다."));
+                    return;
+                }
+
                 await ClickTextAsync(page, "로그인", stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, "[05/30] 로그인 성공 여부를 확인합니다.", async () =>
             {
-                await WaitUntilAnyTextAsync(page, new[] { "회계관리", "로그아웃" }, stepTimeout, cancellationToken);
+                await WaitUntilLoginSuccessAsync(page, stepTimeout, cancellationToken);
             });
 
             progress.Report(AutomationProgress.Info("[06/30] 로그인된 탭은 닫지 않고 유지합니다."));
@@ -262,6 +268,30 @@ public sealed class ErpAutomationService
         }
 
         throw new TimeoutException($"화면에서 다음 텍스트를 찾지 못했습니다: {string.Join(", ", texts)}");
+    }
+
+    private static async Task WaitUntilLoginSuccessAsync(IPage page, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        var deadline = DateTime.UtcNow.Add(timeout);
+        var successTexts = new[] { "회계관리", "로그아웃" };
+        var passwordChangeTexts = new[] { "비밀번호 변경", "비밀번호를 변경", "새 비밀번호", "현재 비밀번호", "비밀번호 재설정", "password change" };
+        while (DateTime.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (await PageContainsAnyAsync(page, successTexts, cancellationToken))
+            {
+                return;
+            }
+
+            if (await PageContainsAnyAsync(page, passwordChangeTexts, cancellationToken))
+            {
+                throw new InvalidOperationException("비밀번호 입력 또는 변경 화면이 감지되어 자동화를 중단합니다. 자동화는 아이디/비밀번호를 입력하거나 변경하지 않습니다.");
+            }
+
+            await Task.Delay(500, cancellationToken);
+        }
+
+        throw new TimeoutException("로그인 성공 화면을 확인하지 못했습니다.");
     }
 
     private static async Task WaitUntilAllGroupsAsync(
