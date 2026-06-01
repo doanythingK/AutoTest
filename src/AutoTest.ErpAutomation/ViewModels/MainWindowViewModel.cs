@@ -218,6 +218,18 @@ public partial class MainWindowViewModel : ObservableObject
         OpenFolder(ErpAutomationService.FailureDirectory, "실패 자료 폴더");
     }
 
+    [RelayCommand]
+    private void OpenLatestFailureHtml()
+    {
+        OpenLatestFailureFile("erp_failure_*.html", "최근 실패 HTML");
+    }
+
+    [RelayCommand]
+    private void OpenLatestFailureScreenshot()
+    {
+        OpenLatestFailureFile("erp_failure_*.png", "최근 실패 화면");
+    }
+
     [RelayCommand(CanExecute = nameof(CanRunAutomation))]
     private async Task RunAutomationAsync()
     {
@@ -462,6 +474,21 @@ public partial class MainWindowViewModel : ObservableObject
         {
             _folderOpenService.OpenFolder(path);
             AddInfo($"{name}를 열었습니다: {path}");
+            StatusMessage = $"{name} 열기 완료";
+        }
+        catch (Exception ex)
+        {
+            AddError($"{name} 열기 실패: {ex.Message}");
+            StatusMessage = $"{name} 열기 실패";
+        }
+    }
+
+    private void OpenLatestFailureFile(string searchPattern, string name)
+    {
+        try
+        {
+            var path = _folderOpenService.OpenLatestFile(ErpAutomationService.FailureDirectory, searchPattern);
+            AddInfo($"{name}을 열었습니다: {path}");
             StatusMessage = $"{name} 열기 완료";
         }
         catch (Exception ex)

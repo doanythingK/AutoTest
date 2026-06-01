@@ -191,7 +191,7 @@
                                        Foreground="#5D6B78"
                                        Margin="0,5,0,0"
                                        TextTrimming="CharacterEllipsis" />
-                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <WrapPanel Margin="0,8,0,0">
                                 <Button Command="{Binding OpenRunLogFolderCommand}"
                                         Content="로그 폴더 열기"
                                         Margin="0,0,8,0"
@@ -202,8 +202,16 @@
                                         Padding="10,6" />
                                 <Button Command="{Binding OpenFailureFolderCommand}"
                                         Content="실패 자료 열기"
+                                        Margin="0,0,8,0"
                                         Padding="10,6" />
-                            </StackPanel>
+                                <Button Command="{Binding OpenLatestFailureHtmlCommand}"
+                                        Content="최근 실패 HTML"
+                                        Margin="0,0,8,0"
+                                        Padding="10,6" />
+                                <Button Command="{Binding OpenLatestFailureScreenshotCommand}"
+                                        Content="최근 실패 화면"
+                                        Padding="10,6" />
+                            </WrapPanel>
                         </StackPanel>
                     </DockPanel>
 
