@@ -14,6 +14,7 @@ public partial class MainWindow : Window
             new ErpAutomationService(),
             new AutomationSettingsService(),
             new AutomationRunLogService(),
+            new AutomationVerificationReportService(),
             new FolderOpenService());
     }
 }

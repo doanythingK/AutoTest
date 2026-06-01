@@ -13,6 +13,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly ErpAutomationService _erpAutomationService;
     private readonly AutomationSettingsService _settingsService;
     private readonly AutomationRunLogService _runLogService;
+    private readonly AutomationVerificationReportService _verificationReportService;
     private readonly FolderOpenService _folderOpenService;
     private CancellationTokenSource? _automationCancellation;
     private string? _currentRunLogPath;
@@ -66,6 +67,12 @@ public partial class MainWindowViewModel : ObservableObject
     private string lastRunLogFilePath = string.Empty;
 
     [ObservableProperty]
+    private string lastVerificationReportPath = string.Empty;
+
+    [ObservableProperty]
+    private string lastVerificationReportFilePath = string.Empty;
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RunAutomationCommand))]
     [NotifyCanExecuteChangedFor(nameof(CancelAutomationCommand))]
     [NotifyCanExecuteChangedFor(nameof(CheckChromeCommand))]
@@ -78,12 +85,14 @@ public partial class MainWindowViewModel : ObservableObject
         ErpAutomationService erpAutomationService,
         AutomationSettingsService settingsService,
         AutomationRunLogService runLogService,
+        AutomationVerificationReportService verificationReportService,
         FolderOpenService folderOpenService)
     {
         _chromeConnectionService = chromeConnectionService;
         _erpAutomationService = erpAutomationService;
         _settingsService = settingsService;
         _runLogService = runLogService;
+        _verificationReportService = verificationReportService;
         _folderOpenService = folderOpenService;
 
         var settings = _settingsService.Load();
@@ -220,6 +229,30 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void OpenVerificationReportFolder()
+    {
+        OpenFolder(_verificationReportService.ReportDirectory, "검증 리포트 폴더");
+    }
+
+    [RelayCommand]
+    private void OpenLatestVerificationReport()
+    {
+        try
+        {
+            var path = !string.IsNullOrWhiteSpace(LastVerificationReportFilePath)
+                ? OpenFile(LastVerificationReportFilePath)
+                : _folderOpenService.OpenLatestFile(_verificationReportService.ReportDirectory, "erp_verification_*.md");
+            AddInfo($"최근 검증 리포트를 열었습니다: {path}");
+            StatusMessage = "최근 검증 리포트 열기 완료";
+        }
+        catch (Exception ex)
+        {
+            AddError($"최근 검증 리포트 열기 실패: {ex.Message}");
+            StatusMessage = "최근 검증 리포트 열기 실패";
+        }
+    }
+
+    [RelayCommand]
     private void OpenLatestFailureHtml()
     {
         OpenLatestFailureFile("erp_failure_*.html", "최근 실패 HTML");
@@ -307,6 +340,23 @@ public partial class MainWindowViewModel : ObservableObject
                 AddInfo($"자동화 종료 시각: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 AddInfo($"자동화 소요 시간: {FormatElapsed(runStopwatch.Elapsed)}");
                 AddInfo($"실행 로그 저장 완료: {_currentRunLogPath}");
+
+                try
+                {
+                    var reportPath = _verificationReportService.CreateReport(
+                        input,
+                        settings,
+                        runResult,
+                        _currentRunLogPath,
+                        Logs.Reverse().ToArray());
+                    LastVerificationReportFilePath = reportPath;
+                    LastVerificationReportPath = $"검증 리포트: {reportPath}";
+                    AddInfo($"30단계 검증 리포트 저장 완료: {reportPath}");
+                }
+                catch (Exception ex)
+                {
+                    AddWarning($"30단계 검증 리포트 저장 실패: {ex.Message}");
+                }
             }
 
             _currentRunLogPath = null;

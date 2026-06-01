@@ -62,6 +62,7 @@ AutoTest.ErpAutomation-win-x64.zip
 주요 하위 폴더:
 
 - `RunLogs`: 실행 로그
+- `VerificationReports`: 30단계 실행 대조 Markdown 리포트
 - `Failures`: 실패 화면 PNG와 전체 프레임 HTML
 - `settings.json`: Chrome 연결 설정
 

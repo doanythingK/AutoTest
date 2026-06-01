@@ -198,6 +198,10 @@
                                        Foreground="#5D6B78"
                                        Margin="0,5,0,0"
                                        TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding LastVerificationReportPath}"
+                                       Foreground="#5D6B78"
+                                       Margin="0,5,0,0"
+                                       TextTrimming="CharacterEllipsis" />
                             <WrapPanel Margin="0,8,0,0">
                                 <Button Command="{Binding OpenRunLogFolderCommand}"
                                         Content="로그 폴더 열기"
@@ -205,6 +209,14 @@
                                         Padding="10,6" />
                                 <Button Command="{Binding OpenLastRunLogCommand}"
                                         Content="최근 로그 열기"
+                                        Margin="0,0,8,0"
+                                        Padding="10,6" />
+                                <Button Command="{Binding OpenVerificationReportFolderCommand}"
+                                        Content="검증 리포트 폴더"
+                                        Margin="0,0,8,0"
+                                        Padding="10,6" />
+                                <Button Command="{Binding OpenLatestVerificationReportCommand}"
+                                        Content="최근 검증 리포트"
                                         Margin="0,0,8,0"
                                         Padding="10,6" />
                                 <Button Command="{Binding OpenFailureFolderCommand}"
