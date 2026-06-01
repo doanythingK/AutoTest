@@ -258,6 +258,7 @@ public partial class MainWindowViewModel : ObservableObject
         AddInfo($"입력 확인: 거래일자 {input.TransactionDateText}, 수량 {input.QuantityText}, 단가 {input.UnitPriceText}");
         AddInfo($"입력 확인: 거래처코드 {input.ClientCode}, 계정코드 {input.CreditAccountCode}");
         AddInfo($"예상 공급가액 {input.SupplyAmountText}, 예상 세액 {input.TaxAmountText}");
+        AddPreflightChecklist(settings);
 
         IsRunning = true;
         StatusMessage = "자동화 실행 중";
@@ -416,6 +417,13 @@ public partial class MainWindowViewModel : ObservableObject
     {
         AddWarning("기존 Chrome이 원격 디버깅 없이 실행 중이면 모든 Chrome 창을 닫고 Chrome 실행을 다시 누르세요.");
         AddInfo($"수동 실행 명령: {_chromeConnectionService.BuildManualLaunchCommand(settings)}");
+    }
+
+    private void AddPreflightChecklist(AutomationSettings settings)
+    {
+        AddInfo($"실행 전 확인: Chrome 프로필 {settings.ChromeProfileDirectory}, 원격 디버깅 포트 {settings.RemoteDebuggingPort}, 단계 대기 {settings.StepTimeoutSeconds}초");
+        AddInfo("실행 전 확인: ERP 아이디/비밀번호는 Chrome 저장 로그인 정보만 사용하고 앱은 입력하지 않습니다.");
+        AddInfo("실행 전 확인: 자동화 중 Chrome 탭을 닫거나 ERP 화면을 다른 메뉴로 이동하지 마세요.");
     }
 
     private async Task<ChromeConnectionResult> WaitForChromeConnectionAsync(AutomationSettings settings, TimeSpan timeout)
