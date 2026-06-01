@@ -824,8 +824,19 @@ public sealed class ErpAutomationService
                             element.getAttribute('title'),
                             element.getAttribute('aria-label')
                         ].filter(Boolean).join(' ');
+                        const hasVisibleValueChild = element => Array.from(element.children || [])
+                            .some(child => visible(child) && normalize(valueOf(child)).length > 0);
+                        const isCellLike = element => {
+                            const tag = element.tagName.toLowerCase();
+                            const role = element.getAttribute('role');
+                            const rect = element.getBoundingClientRect();
+                            if (tag === 'input' || tag === 'textarea' || tag === 'td' || tag === 'th') return true;
+                            if (role === 'gridcell' || role === 'cell') return true;
+                            return (tag === 'div' || tag === 'span') && !hasVisibleValueChild(element) && rect.height <= 80;
+                        };
                         const cells = Array.from(document.querySelectorAll('td, th, div, span, input:not([type=hidden]), textarea, [role=gridcell], [role=cell]'))
                             .filter(visible)
+                            .filter(isCellLike)
                             .map(element => ({ text: normalize(valueOf(element)), rect: element.getBoundingClientRect() }))
                             .filter(item => item.text.length > 0 && item.rect.width > 0 && item.rect.height > 0)
                             .sort((a, b) => a.rect.top - b.rect.top || a.rect.left - b.rect.left);
