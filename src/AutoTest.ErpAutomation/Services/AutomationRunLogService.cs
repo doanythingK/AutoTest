@@ -15,7 +15,7 @@ public sealed class AutomationRunLogService
     {
         Directory.CreateDirectory(LogDirectory);
 
-        var path = Path.Combine(LogDirectory, $"erp_run_{DateTime.Now:yyyyMMdd_HHmmss}.log");
+        var path = CreateRunLogPath(DateTime.Now);
         var builder = new StringBuilder();
         builder.AppendLine("ERP 매출등록 자동화 실행 로그");
         builder.AppendLine($"시작시각: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
@@ -56,5 +56,20 @@ public sealed class AutomationRunLogService
         return string.IsNullOrWhiteSpace(value)
             ? "(자동 탐색)"
             : value;
+    }
+
+    private string CreateRunLogPath(DateTime timestamp)
+    {
+        var baseName = $"erp_run_{timestamp:yyyyMMdd_HHmmss_fff}";
+        var path = Path.Combine(LogDirectory, $"{baseName}.log");
+        var suffix = 1;
+
+        while (File.Exists(path))
+        {
+            path = Path.Combine(LogDirectory, $"{baseName}_{suffix}.log");
+            suffix++;
+        }
+
+        return path;
     }
 }

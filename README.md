@@ -47,7 +47,7 @@ chrome.exe --remote-debugging-port=9222 --profile-directory=Default
 
 자동화 로그에는 요구사항 단계와 대응되는 `[01/30]` 형식의 단계 번호가 표시됩니다.
 
-실행 1회마다 아래 경로에 별도 로그 파일을 생성합니다.
+실행 1회마다 아래 경로에 밀리초 단위 파일명으로 별도 로그 파일을 생성합니다.
 
 ```text
 %LOCALAPPDATA%\AutoTest.ErpAutomation\RunLogs
