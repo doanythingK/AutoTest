@@ -93,10 +93,11 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[21/30] 계산 결과가 정상 반영되었는지 확인합니다.", async () =>
             {
+                var hasZeroAmount = await PageHasZeroNearAnyLabelAsync(page, new[] { "공급가액", "세액" }, cancellationToken);
                 var ok = await PageContainsAllGroupsAsync(page, input.CalculationResultGroups, cancellationToken);
-                if (!ok)
+                if (hasZeroAmount || !ok)
                 {
-                    progress.Report(AutomationProgress.Warning("공급가액/세액을 찾지 못했습니다. 수량과 단가를 다시 입력한 뒤 계산을 재시도합니다."));
+                    progress.Report(AutomationProgress.Warning("공급가액/세액이 0이거나 기대값을 찾지 못했습니다. 수량과 단가를 다시 입력한 뒤 계산을 재시도합니다."));
                     await FillNearLabelAsync(page, "수량", input.QuantityText, pressEnter: false, cancellationToken);
                     await FillNearLabelAsync(page, "단가", input.UnitPriceText, pressEnter: false, cancellationToken);
                     await ClickTextAsync(page, "계산", cancellationToken);
@@ -263,6 +264,70 @@ public sealed class ErpAutomationService
                         return groups.every(group => group.some(text => normalizedBodyText.includes(normalize(text))));
                     }",
                     groups);
+                if (found)
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // Some transient frames can disappear while the ERP screen is changing.
+            }
+        }
+
+        return false;
+    }
+
+    private static async Task<bool> PageHasZeroNearAnyLabelAsync(
+        IPage page,
+        IReadOnlyCollection<string> labels,
+        CancellationToken cancellationToken)
+    {
+        foreach (var frame in page.Frames)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var found = await frame.EvaluateAsync<bool>(
+                    @"(labels) => {
+                        const normalizeText = value => String(value || '').replace(/\s+/g, ' ').trim();
+                        const normalizeNumber = value => String(value || '').replace(/[,\s]/g, '');
+                        const visible = element => {
+                            const style = window.getComputedStyle(element);
+                            const rect = element.getBoundingClientRect();
+                            return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+                        };
+                        const valueOf = element => normalizeText(element.value || element.innerText || element.textContent || element.title);
+                        const isZero = value => normalizeNumber(value) === '0';
+                        const candidates = Array.from(document.querySelectorAll('label, th, td, span, div')).filter(element => visible(element));
+                        for (const label of labels) {
+                            for (const labelElement of candidates) {
+                                if (!normalizeText(labelElement.innerText || labelElement.textContent).includes(label)) continue;
+
+                                const row = labelElement.closest('tr');
+                                if (row) {
+                                    const rowValues = Array.from(row.querySelectorAll('input:not([type=hidden]), textarea, td, span, div'))
+                                        .filter(element => element !== labelElement && visible(element))
+                                        .map(valueOf)
+                                        .filter(Boolean);
+                                    if (rowValues.some(isZero)) return true;
+                                }
+
+                                const labelRect = labelElement.getBoundingClientRect();
+                                const nearby = Array.from(document.querySelectorAll('input:not([type=hidden]), textarea, td, span, div'))
+                                    .filter(element => element !== labelElement && visible(element))
+                                    .map(element => ({ element, rect: element.getBoundingClientRect() }))
+                                    .filter(item => Math.abs(item.rect.top - labelRect.top) < 70 && item.rect.left >= labelRect.left)
+                                    .sort((a, b) => Math.abs(a.rect.left - labelRect.right) - Math.abs(b.rect.left - labelRect.right))
+                                    .slice(0, 3)
+                                    .map(item => valueOf(item.element))
+                                    .filter(Boolean);
+                                if (nearby.some(isZero)) return true;
+                            }
+                        }
+                        return false;
+                    }",
+                    labels);
                 if (found)
                 {
                     return true;
