@@ -229,7 +229,7 @@ public sealed class ErpAutomationService
         }
     }
 
-    private static Task ClickTextAsync(
+    private static async Task ClickTextAsync(
         IPage page,
         string text,
         TimeSpan timeout,
@@ -237,12 +237,14 @@ public sealed class ErpAutomationService
         bool preferUpperArea = false,
         bool preferLowerArea = false)
     {
-        return RunInAnyFrameAsync(
+        await RunInAnyFrameAsync(
             page,
             frame => ClickTextInFrameAsync(page, frame, text, preferUpperArea, preferLowerArea),
             $"'{text}' 클릭",
             timeout,
             cancellationToken);
+
+        await WaitAfterClickAsync(page, timeout, cancellationToken);
     }
 
     private static async Task FillNearLabelAsync(
@@ -311,7 +313,17 @@ public sealed class ErpAutomationService
     private static async Task WaitAfterEnterAsync(IPage page, TimeSpan timeout, CancellationToken cancellationToken)
     {
         await Task.Delay(500, cancellationToken);
+        await WaitForBusyIndicatorToClearAsync(page, timeout, cancellationToken);
+    }
 
+    private static async Task WaitAfterClickAsync(IPage page, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        await Task.Delay(300, cancellationToken);
+        await WaitForBusyIndicatorToClearAsync(page, timeout, cancellationToken);
+    }
+
+    private static async Task WaitForBusyIndicatorToClearAsync(IPage page, TimeSpan timeout, CancellationToken cancellationToken)
+    {
         var settleTimeout = TimeSpan.FromMilliseconds(Math.Min(timeout.TotalMilliseconds, 3000));
         var deadline = DateTime.UtcNow.Add(settleTimeout);
         while (DateTime.UtcNow < deadline)
