@@ -64,14 +64,12 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[12/30] 차변에서 외상매출금 [1141]을 선택합니다.", async () =>
             {
-                await SelectByLabelAsync(page, "차변", "외상매출금", stepTimeout, cancellationToken);
-                await ClickTextAsync(page, "외상매출금", stepTimeout, cancellationToken);
+                await SelectByLabelAsync(page, "차변", new[] { "외상매출금 [1141]", "외상매출금" }, stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, "[13/30] 매출구분에서 서비스(사회및개인)업 폐차처리업을 선택합니다.", async () =>
             {
                 await SelectByLabelAsync(page, "매출구분", "서비스(사회및개인)업 폐차처리업", stepTimeout, cancellationToken);
-                await ClickTextAsync(page, "서비스(사회및개인)업 폐차처리업", stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, $"[14/30] 거래처코드/명에 {input.ClientCode} 값을 입력하고 Enter를 실행합니다.", () =>
@@ -83,7 +81,6 @@ public sealed class ErpAutomationService
             await StepAsync(progress, "[16/30] 전자(세금)계산서 발송구분에서 국세청HTS를 선택합니다.", async () =>
             {
                 await SelectByLabelAsync(page, "전자(세금)계산서 발송구분", "국세청HTS", stepTimeout, cancellationToken);
-                await ClickTextAsync(page, "국세청HTS", stepTimeout, cancellationToken);
             });
 
             await StepAsync(progress, $"[17/30] 품목코드/품목명(적요)에 {AutomationInput.ItemText}를 입력합니다.", () =>
@@ -198,7 +195,44 @@ public sealed class ErpAutomationService
 
     private static Task SelectByLabelAsync(IPage page, string label, string optionText, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        return RunInAnyFrameAsync(page, frame => SelectByLabelInFrameAsync(frame, label, optionText), $"'{label}' 선택", timeout, cancellationToken);
+        return SelectByLabelAsync(page, label, new[] { optionText }, timeout, cancellationToken);
+    }
+
+    private static async Task SelectByLabelAsync(
+        IPage page,
+        string label,
+        IReadOnlyCollection<string> optionTexts,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        var quickTimeout = TimeSpan.FromMilliseconds(Math.Min(timeout.TotalMilliseconds, 2500));
+        foreach (var optionText in optionTexts)
+        {
+            if (await TryRunInAnyFrameAsync(
+                page,
+                frame => SelectNativeByLabelInFrameAsync(frame, label, optionText),
+                quickTimeout,
+                cancellationToken))
+            {
+                return;
+            }
+        }
+
+        await RunInAnyFrameAsync(page, frame => OpenDropdownByLabelInFrameAsync(frame, label), $"'{label}' 드롭다운 열기", timeout, cancellationToken);
+
+        foreach (var optionText in optionTexts)
+        {
+            if (await TryRunInAnyFrameAsync(
+                page,
+                frame => ClickTextInFrameAsync(frame, optionText),
+                quickTimeout,
+                cancellationToken))
+            {
+                return;
+            }
+        }
+
+        throw new TimeoutException($"'{label}' 드롭다운에서 다음 옵션을 찾지 못했습니다: {string.Join(", ", optionTexts)}");
     }
 
     private static async Task WaitUntilAnyTextAsync(IPage page, IReadOnlyCollection<string> texts, TimeSpan timeout, CancellationToken cancellationToken)
@@ -370,6 +404,20 @@ public sealed class ErpAutomationService
         TimeSpan timeout,
         CancellationToken cancellationToken)
     {
+        if (await TryRunInAnyFrameAsync(page, action, timeout, cancellationToken))
+        {
+            return;
+        }
+
+        throw new TimeoutException($"{description} 대상을 찾지 못했습니다.");
+    }
+
+    private static async Task<bool> TryRunInAnyFrameAsync(
+        IPage page,
+        Func<IFrame, Task<bool>> action,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
         var deadline = DateTime.UtcNow.Add(timeout);
         while (DateTime.UtcNow < deadline)
         {
@@ -380,7 +428,7 @@ public sealed class ErpAutomationService
                 {
                     if (await action(frame))
                     {
-                        return;
+                        return true;
                     }
                 }
                 catch
@@ -392,7 +440,7 @@ public sealed class ErpAutomationService
             await Task.Delay(350, cancellationToken);
         }
 
-        throw new TimeoutException($"{description} 대상을 찾지 못했습니다.");
+        return false;
     }
 
     private static Task<bool> ClickTextInFrameAsync(IFrame frame, string text)
@@ -504,10 +552,54 @@ public sealed class ErpAutomationService
             new { label, value, pressEnter, preferLowerArea, preferWideControl });
     }
 
-    private static Task<bool> SelectByLabelInFrameAsync(IFrame frame, string label, string optionText)
+    private static Task<bool> SelectNativeByLabelInFrameAsync(IFrame frame, string label, string optionText)
     {
         return frame.EvaluateAsync<bool>(
             @"({ label, optionText }) => {
+                const normalize = item => (item || '').replace(/\s+/g, ' ').trim();
+                const normalizeOption = item => normalize(item).replace(/[,\s()[\]{}<>\/\\:_-]/g, '');
+                const normalizeKey = item => normalize(item).replace(/[\s()[\]{}<>\/\\:_-]/g, '');
+                const targetKey = normalizeKey(label);
+                const optionKey = normalizeOption(optionText);
+                const matchesLabel = element => {
+                    const key = normalizeKey(element.innerText || element.textContent || element.value || element.title);
+                    if (!key || key.length < 2) return false;
+                    return key.includes(targetKey) || (targetKey.includes(key) && key.length >= Math.min(4, targetKey.length));
+                };
+                const matchesOption = item => {
+                    const textKey = normalizeOption(item.text);
+                    const valueKey = normalizeOption(item.value);
+                    return textKey.includes(optionKey) || valueKey.includes(optionKey);
+                };
+                const visible = element => {
+                    const style = window.getComputedStyle(element);
+                    const rect = element.getBoundingClientRect();
+                    return style && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+                };
+                const labels = Array.from(document.querySelectorAll('label, th, td, span, div')).filter(element => visible(element) && matchesLabel(element));
+                for (const labelElement of labels) {
+                    const row = labelElement.closest('tr');
+                    const scope = row || document;
+                    const select = Array.from(scope.querySelectorAll('select')).filter(visible)[0];
+                    if (select) {
+                        const option = Array.from(select.options).find(matchesOption);
+                        if (option) {
+                            select.value = option.value;
+                            select.dispatchEvent(new Event('input', { bubbles: true }));
+                            select.dispatchEvent(new Event('change', { bubbles: true }));
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }",
+            new { label, optionText });
+    }
+
+    private static Task<bool> OpenDropdownByLabelInFrameAsync(IFrame frame, string label)
+    {
+        return frame.EvaluateAsync<bool>(
+            @"(label) => {
                 const normalize = item => (item || '').replace(/\s+/g, ' ').trim();
                 const normalizeKey = item => normalize(item).replace(/[\s()[\]{}<>\/\\:_-]/g, '');
                 const targetKey = normalizeKey(label);
@@ -523,18 +615,6 @@ public sealed class ErpAutomationService
                 };
                 const labels = Array.from(document.querySelectorAll('label, th, td, span, div')).filter(element => visible(element) && matchesLabel(element));
                 for (const labelElement of labels) {
-                    const row = labelElement.closest('tr');
-                    const scope = row || document;
-                    const select = Array.from(scope.querySelectorAll('select')).filter(visible)[0];
-                    if (select) {
-                        const option = Array.from(select.options).find(item => normalize(item.text).includes(optionText) || normalize(item.value).includes(optionText));
-                        if (option) {
-                            select.value = option.value;
-                            select.dispatchEvent(new Event('change', { bubbles: true }));
-                            return true;
-                        }
-                    }
-
                     const labelRect = labelElement.getBoundingClientRect();
                     const controls = Array.from(document.querySelectorAll('select, input:not([type=hidden]), button, [role=combobox], [aria-haspopup]')).filter(visible);
                     const target = controls
@@ -559,7 +639,7 @@ public sealed class ErpAutomationService
                 }
                 return false;
             }",
-            new { label, optionText });
+            label);
     }
 
     private static async Task SaveFailureArtifactsAsync(IPage page, IProgress<AutomationProgress> progress)
