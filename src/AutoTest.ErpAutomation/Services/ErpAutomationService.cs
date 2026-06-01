@@ -1,6 +1,8 @@
 using AutoTest.ErpAutomation.Models;
 using Microsoft.Playwright;
 using System.IO;
+using System.Net;
+using System.Text;
 
 namespace AutoTest.ErpAutomation.Services;
 
@@ -745,7 +747,7 @@ public sealed class ErpAutomationService
                 Path = screenshotPath,
                 FullPage = true
             });
-            await File.WriteAllTextAsync(htmlPath, await page.ContentAsync());
+            await File.WriteAllTextAsync(htmlPath, await BuildFailureHtmlAsync(page));
 
             progress.Report(AutomationProgress.Warning($"실패 화면을 저장했습니다: {screenshotPath}"));
             progress.Report(AutomationProgress.Warning($"실패 HTML을 저장했습니다: {htmlPath}"));
@@ -754,5 +756,38 @@ public sealed class ErpAutomationService
         {
             progress.Report(AutomationProgress.Warning($"실패 자료 저장 중 오류가 발생했습니다: {ex.Message}"));
         }
+    }
+
+    private static async Task<string> BuildFailureHtmlAsync(IPage page)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("<!doctype html>");
+        builder.AppendLine("<html><head><meta charset=\"utf-8\"><title>ERP automation failure frames</title></head><body>");
+        builder.AppendLine("<h1>ERP automation failure frames</h1>");
+        builder.AppendLine($"<p>Captured at {WebUtility.HtmlEncode(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))}</p>");
+
+        var index = 1;
+        foreach (var frame in page.Frames)
+        {
+            builder.AppendLine("<hr>");
+            builder.AppendLine($"<h2>Frame {index}</h2>");
+            builder.AppendLine($"<p>URL: {WebUtility.HtmlEncode(frame.Url)}</p>");
+
+            try
+            {
+                builder.AppendLine("<pre>");
+                builder.AppendLine(WebUtility.HtmlEncode(await frame.ContentAsync()));
+                builder.AppendLine("</pre>");
+            }
+            catch (Exception ex)
+            {
+                builder.AppendLine($"<p>Frame content capture failed: {WebUtility.HtmlEncode(ex.Message)}</p>");
+            }
+
+            index++;
+        }
+
+        builder.AppendLine("</body></html>");
+        return builder.ToString();
     }
 }
