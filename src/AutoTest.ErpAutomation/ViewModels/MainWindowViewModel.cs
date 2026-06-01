@@ -351,7 +351,7 @@ public partial class MainWindowViewModel : ObservableObject
             out var parsed,
             out error))
         {
-            input = parsed;
+            input = parsed!;
             return true;
         }
 

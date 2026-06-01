@@ -72,7 +72,7 @@ public sealed class ErpAutomationService
             await StepAsync(progress, "[10/30] 원화 버튼을 클릭합니다.", () => ClickTextAsync(page, "원화", stepTimeout, cancellationToken));
 
             await StepAsync(progress, $"[11/30] 거래일자에 오늘 날짜({input.TransactionDateText})를 입력합니다.", () =>
-                FillNearLabelAsync(page, "거래일자", input.TransactionDateCandidates, pressEnter: false, stepTimeout, cancellationToken));
+                FillNearAnyLabelAsync(page, new[] { "거래일자", "거래 일자", "일자" }, input.TransactionDateCandidates, pressEnter: false, stepTimeout, cancellationToken));
 
             await StepAsync(progress, "[12/30] 차변에서 외상매출금 [1141]을 선택합니다.", async () =>
             {
@@ -85,10 +85,10 @@ public sealed class ErpAutomationService
             });
 
             await StepAsync(progress, $"[14/30] 거래처코드/명에 {input.ClientCode} 값을 입력하고 Enter를 실행합니다.", () =>
-                FillNearLabelAsync(page, "거래처코드/명", input.ClientCode, pressEnter: true, stepTimeout, cancellationToken));
+                FillNearAnyLabelAsync(page, new[] { "거래처코드/명", "거래처코드", "거래처명" }, input.ClientCode, pressEnter: true, stepTimeout, cancellationToken));
 
             await StepAsync(progress, "[15/30] 담당부서에 20을 입력하고 Enter를 실행합니다.", () =>
-                FillNearLabelAsync(page, "담당부서", "20", pressEnter: true, stepTimeout, cancellationToken));
+                FillNearAnyLabelAsync(page, new[] { "담당부서", "부서" }, "20", pressEnter: true, stepTimeout, cancellationToken));
 
             await StepAsync(progress, "[16/30] 전자(세금)계산서 발송구분에서 국세청HTS를 선택합니다.", async () =>
             {
@@ -96,7 +96,7 @@ public sealed class ErpAutomationService
             });
 
             await StepAsync(progress, $"[17/30] 품목코드/품목명(적요)에 {AutomationInput.ItemText}를 입력합니다.", () =>
-                FillNearLabelAsync(page, "품목코드/품목명(적요)", AutomationInput.ItemText, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true, preferWideControl: true));
+                FillNearAnyLabelAsync(page, new[] { "품목코드/품목명(적요)", "품목코드/품목명", "품목명(적요)", "적요" }, AutomationInput.ItemText, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true, preferWideControl: true));
 
             await StepAsync(progress, $"[18/30] 수량에 {input.QuantityText} 값을 입력합니다.", () =>
                 FillNearLabelAsync(page, "수량", input.QuantityInputCandidates, pressEnter: false, stepTimeout, cancellationToken, preferLowerArea: true));
@@ -127,7 +127,7 @@ public sealed class ErpAutomationService
             });
 
             await StepAsync(progress, $"[22/30] 계정코드(대변)에 {input.CreditAccountCode} 값을 입력하고 Enter를 실행합니다.", () =>
-                FillNearLabelAsync(page, "계정코드(대변)", input.CreditAccountCode, pressEnter: true, stepTimeout, cancellationToken, preferLowerArea: true));
+                FillNearAnyLabelAsync(page, new[] { "계정코드(대변)", "계정코드", "대변" }, input.CreditAccountCode, pressEnter: true, stepTimeout, cancellationToken, preferLowerArea: true));
 
             await StepAsync(progress, "[23/30] 라인저장 전 입력값과 계산 결과를 확인한 뒤 라인저장(L) 버튼을 클릭합니다.", async () =>
             {
@@ -252,7 +252,7 @@ public sealed class ErpAutomationService
         bool preferLowerArea = false,
         bool preferWideControl = false)
     {
-        await FillNearLabelAsync(page, label, new[] { value }, pressEnter, timeout, cancellationToken, preferLowerArea, preferWideControl);
+        await FillNearAnyLabelAsync(page, new[] { label }, new[] { value }, pressEnter, timeout, cancellationToken, preferLowerArea, preferWideControl);
     }
 
     private static async Task FillNearLabelAsync(
@@ -265,10 +265,36 @@ public sealed class ErpAutomationService
         bool preferLowerArea = false,
         bool preferWideControl = false)
     {
+        await FillNearAnyLabelAsync(page, new[] { label }, values, pressEnter, timeout, cancellationToken, preferLowerArea, preferWideControl);
+    }
+
+    private static async Task FillNearAnyLabelAsync(
+        IPage page,
+        IReadOnlyCollection<string> labels,
+        string value,
+        bool pressEnter,
+        TimeSpan timeout,
+        CancellationToken cancellationToken,
+        bool preferLowerArea = false,
+        bool preferWideControl = false)
+    {
+        await FillNearAnyLabelAsync(page, labels, new[] { value }, pressEnter, timeout, cancellationToken, preferLowerArea, preferWideControl);
+    }
+
+    private static async Task FillNearAnyLabelAsync(
+        IPage page,
+        IReadOnlyCollection<string> labels,
+        IReadOnlyCollection<string> values,
+        bool pressEnter,
+        TimeSpan timeout,
+        CancellationToken cancellationToken,
+        bool preferLowerArea = false,
+        bool preferWideControl = false)
+    {
         await RunInAnyFrameAsync(
             page,
-            frame => FillNearLabelInFrameAsync(frame, label, values, preferLowerArea, preferWideControl),
-            $"'{label}' 입력",
+            frame => FillNearLabelInFrameAsync(frame, labels, values, preferLowerArea, preferWideControl),
+            $"'{string.Join("' 또는 '", labels)}' 입력",
             timeout,
             cancellationToken);
 
@@ -905,7 +931,12 @@ public sealed class ErpAutomationService
         return false;
     }
 
-    private static async Task<bool> ClickTextInFrameAsync(IPage page, IFrame frame, string text, bool preferUpperArea, bool preferLowerArea)
+    private static async Task<bool> ClickTextInFrameAsync(
+        IPage page,
+        IFrame frame,
+        string text,
+        bool preferUpperArea = false,
+        bool preferLowerArea = false)
     {
         var clickTarget = await frame.EvaluateAsync<ClickTargetResult>(
             @"({ text, preferUpperArea, preferLowerArea }) => {
@@ -1015,20 +1046,21 @@ public sealed class ErpAutomationService
 
     private static Task<bool> FillNearLabelInFrameAsync(
         IFrame frame,
-        string label,
+        IReadOnlyCollection<string> labels,
         IReadOnlyCollection<string> values,
         bool preferLowerArea,
         bool preferWideControl)
     {
         return frame.EvaluateAsync<bool>(
-            @"({ label, values, preferLowerArea, preferWideControl }) => {
+            @"({ labels, values, preferLowerArea, preferWideControl }) => {
                 const normalize = item => (item || '').replace(/\s+/g, ' ').trim();
                 const normalizeKey = item => normalize(item).replace(/[\s()[\]{}<>\/\\:_-]/g, '');
-                const targetKey = normalizeKey(label);
+                const targetKeys = Array.from(labels || []).map(normalizeKey).filter(key => key.length >= 2);
                 const matchesLabel = element => {
                     const key = normalizeKey(element.innerText || element.textContent || element.value || element.title);
                     if (!key || key.length < 2) return false;
-                    return key.includes(targetKey) || (targetKey.includes(key) && key.length >= Math.min(4, targetKey.length));
+                    return targetKeys.some(targetKey =>
+                        key.includes(targetKey) || (targetKey.includes(key) && key.length >= Math.min(4, targetKey.length)));
                 };
                 const visible = element => {
                     const style = window.getComputedStyle(element);
@@ -1115,7 +1147,7 @@ public sealed class ErpAutomationService
                 }
                 return false;
             }",
-            new { label, values, preferLowerArea, preferWideControl });
+            new { labels, values, preferLowerArea, preferWideControl });
     }
 
     private static Task<bool> SelectNativeByLabelInFrameAsync(IFrame frame, string label, string optionText)
