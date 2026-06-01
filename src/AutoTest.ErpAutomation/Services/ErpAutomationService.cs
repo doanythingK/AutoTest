@@ -48,6 +48,8 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[04/30] 로그인 버튼만 클릭합니다.", async () =>
             {
+                await WaitForLoginPageSettleAsync(page, stepTimeout, cancellationToken);
+
                 if (await PageContainsAnyAsync(page, new[] { "회계관리", "로그아웃" }, cancellationToken))
                 {
                     progress.Report(AutomationProgress.Info("이미 로그인된 화면으로 판단되어 로그인 버튼 클릭을 생략합니다."));
@@ -267,6 +269,36 @@ public sealed class ErpAutomationService
     private static async Task WaitAfterEnterAsync(IPage page, TimeSpan timeout, CancellationToken cancellationToken)
     {
         await Task.Delay(500, cancellationToken);
+
+        var settleTimeout = TimeSpan.FromMilliseconds(Math.Min(timeout.TotalMilliseconds, 3000));
+        var deadline = DateTime.UtcNow.Add(settleTimeout);
+        while (DateTime.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!await PageHasBusyIndicatorAsync(page, cancellationToken))
+            {
+                return;
+            }
+
+            await Task.Delay(250, cancellationToken);
+        }
+    }
+
+    private static async Task WaitForLoginPageSettleAsync(IPage page, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await page.WaitForLoadStateAsync(LoadState.Load, new PageWaitForLoadStateOptions
+            {
+                Timeout = (float)Math.Min(timeout.TotalMilliseconds, 3000)
+            });
+        }
+        catch
+        {
+            // Some ERP pages keep loading auxiliary resources; continue after the bounded wait.
+        }
+
+        await Task.Delay(700, cancellationToken);
 
         var settleTimeout = TimeSpan.FromMilliseconds(Math.Min(timeout.TotalMilliseconds, 3000));
         var deadline = DateTime.UtcNow.Add(settleTimeout);
