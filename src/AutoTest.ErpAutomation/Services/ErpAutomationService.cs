@@ -479,13 +479,12 @@ public sealed class ErpAutomationService
         bool preferUpperArea = false,
         bool preferLowerArea = false)
     {
-        var firstWait = TimeSpan.FromMilliseconds(Math.Max(1000, Math.Min(timeout.TotalMilliseconds / 2, 5000)));
-        if (await TryWaitUntilAnyTextAsync(page, texts, firstWait, cancellationToken))
+        if (await TryWaitUntilAnyTextAsync(page, texts, timeout, cancellationToken))
         {
             return;
         }
 
-        progress.Report(AutomationProgress.Warning($"완료 상태가 아직 보이지 않아 '{retryClickText}' 버튼을 한 번 더 클릭합니다."));
+        progress.Report(AutomationProgress.Warning($"대기 시간 내 완료 상태가 보이지 않아 '{retryClickText}' 버튼을 한 번 더 클릭합니다."));
         await ClickTextAsync(page, retryClickText, timeout, cancellationToken, preferUpperArea, preferLowerArea);
         await WaitUntilAnyTextAsync(page, texts, timeout, cancellationToken);
     }
