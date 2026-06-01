@@ -13,7 +13,7 @@
 
 ## Chrome 실행
 
-WPF의 `Chrome 실행` 버튼을 사용하거나, 직접 실행해야 할 경우 아래 명령을 사용한다.
+WPF의 `Chrome 실행` 버튼을 사용하면 Chrome을 연 뒤 원격 디버깅 포트 연결 상태까지 확인한다. 직접 실행해야 할 경우 아래 명령을 사용한다.
 
 ```powershell
 chrome.exe --remote-debugging-port=9222 --profile-directory=Default

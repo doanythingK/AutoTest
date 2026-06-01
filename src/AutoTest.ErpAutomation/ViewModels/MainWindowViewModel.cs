@@ -131,7 +131,7 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void StartChrome()
+    private async Task StartChromeAsync()
     {
         if (!TryCreateSettings(out var settings, out var error))
         {
@@ -144,7 +144,20 @@ public partial class MainWindowViewModel : ObservableObject
         {
             _chromeConnectionService.StartChromeWithRemoteDebugging(settings);
             AddInfo($"Chrome을 원격 디버깅 포트 {settings.RemoteDebuggingPort}로 실행했습니다.");
-            StatusMessage = "Chrome 실행 완료";
+            StatusMessage = "Chrome 연결 확인 중";
+
+            await Task.Delay(1200);
+            var connection = await _chromeConnectionService.CheckConnectionAsync(settings, CancellationToken.None);
+            ChromeStatus = connection.Message;
+            if (connection.IsConnected)
+            {
+                AddInfo(connection.Message);
+                StatusMessage = "Chrome 실행 및 연결 완료";
+                return;
+            }
+
+            AddWarning(connection.Message);
+            StatusMessage = "Chrome 연결 필요";
         }
         catch (Exception ex)
         {
