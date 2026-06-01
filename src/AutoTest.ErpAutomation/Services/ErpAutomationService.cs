@@ -32,6 +32,7 @@ public sealed class ErpAutomationService
         page.SetDefaultTimeout((float)stepTimeout.TotalMilliseconds);
         var dialogHandlers = new List<(IPage Page, EventHandler<IDialog> Handler)>();
         AttachDialogHandler(page, progress, dialogHandlers);
+        var loginSuccessTexts = new[] { "회계관리", "로그아웃" };
 
         try
         {
@@ -50,7 +51,7 @@ public sealed class ErpAutomationService
             {
                 await WaitForLoginPageSettleAsync(page, stepTimeout, cancellationToken);
 
-                if (await PageContainsAnyAsync(page, new[] { "회계관리", "로그아웃" }, cancellationToken))
+                if (await PageContainsAnyAsync(page, loginSuccessTexts, cancellationToken))
                 {
                     progress.Report(AutomationProgress.Info("이미 로그인된 화면으로 판단되어 로그인 버튼 클릭을 생략합니다."));
                     return;
@@ -61,7 +62,9 @@ public sealed class ErpAutomationService
 
             await StepAsync(progress, "[05/30] 로그인 성공 여부를 확인합니다.", async () =>
             {
-                await WaitUntilLoginSuccessAsync(page, stepTimeout, cancellationToken);
+                page = await WaitUntilLoginSuccessAsync(context, page, loginSuccessTexts, stepTimeout, progress, cancellationToken);
+                page.SetDefaultTimeout((float)stepTimeout.TotalMilliseconds);
+                AttachDialogHandler(page, progress, dialogHandlers);
             });
 
             progress.Report(AutomationProgress.Info("[06/30] 로그인된 탭은 닫지 않고 유지합니다."));
@@ -459,22 +462,40 @@ public sealed class ErpAutomationService
         return fallbackPage;
     }
 
-    private static async Task WaitUntilLoginSuccessAsync(IPage page, TimeSpan timeout, CancellationToken cancellationToken)
+    private static async Task<IPage> WaitUntilLoginSuccessAsync(
+        IBrowserContext context,
+        IPage currentPage,
+        IReadOnlyCollection<string> successTexts,
+        TimeSpan timeout,
+        IProgress<AutomationProgress> progress,
+        CancellationToken cancellationToken)
     {
         var deadline = DateTime.UtcNow.Add(timeout);
-        var successTexts = new[] { "회계관리", "로그아웃" };
         var passwordChangeTexts = new[] { "비밀번호 변경", "비밀번호를 변경", "새 비밀번호", "현재 비밀번호", "비밀번호 재설정", "password change" };
         while (DateTime.UtcNow < deadline)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (await PageContainsAnyAsync(page, successTexts, cancellationToken))
+            var pages = context.Pages.Where(candidate => !candidate.IsClosed).Reverse().ToArray();
+            foreach (var page in pages)
             {
-                return;
+                if (await PageContainsAnyAsync(page, successTexts, cancellationToken))
+                {
+                    await page.BringToFrontAsync();
+                    if (!ReferenceEquals(page, currentPage))
+                    {
+                        progress.Report(AutomationProgress.Info("로그인 성공 화면이 열린 탭으로 전환했습니다."));
+                    }
+
+                    return page;
+                }
             }
 
-            if (await PageContainsAnyAsync(page, passwordChangeTexts, cancellationToken))
+            foreach (var page in pages)
             {
-                throw new InvalidOperationException("비밀번호 입력 또는 변경 화면이 감지되어 자동화를 중단합니다. 자동화는 아이디/비밀번호를 입력하거나 변경하지 않습니다.");
+                if (await PageContainsAnyAsync(page, passwordChangeTexts, cancellationToken))
+                {
+                    throw new InvalidOperationException("비밀번호 입력 또는 변경 화면이 감지되어 자동화를 중단합니다. 자동화는 아이디/비밀번호를 입력하거나 변경하지 않습니다.");
+                }
             }
 
             await Task.Delay(500, cancellationToken);
