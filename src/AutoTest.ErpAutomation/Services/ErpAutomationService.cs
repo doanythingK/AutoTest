@@ -124,7 +124,7 @@ public sealed class ErpAutomationService
             await StepAsync(progress, "[23/30] 라인저장 전 입력값과 계산 결과를 확인한 뒤 라인저장(L) 버튼을 클릭합니다.", async () =>
             {
                 await WaitUntilAllGroupsAsync(page, input.BeforeLineSaveGroups, stepTimeout, cancellationToken);
-                await ClickTextAsync(page, "라인저장", stepTimeout, cancellationToken);
+                await ClickTextAsync(page, "라인저장", stepTimeout, cancellationToken, preferLowerArea: true);
             });
 
             await StepAsync(progress, "[24/30] 라인 목록 반영 여부를 확인합니다.", async () =>
@@ -132,11 +132,11 @@ public sealed class ErpAutomationService
                 await WaitUntilLineResultRowAsync(page, input.LineResultGroups, stepTimeout, cancellationToken);
             });
 
-            await StepAsync(progress, "[25/30] 거래전기[S] 버튼을 클릭합니다.", () => ClickTextAsync(page, "거래전기", stepTimeout, cancellationToken));
+            await StepAsync(progress, "[25/30] 거래전기[S] 버튼을 클릭합니다.", () => ClickTextAsync(page, "거래전기", stepTimeout, cancellationToken, preferUpperArea: true));
             await StepAsync(progress, "[26/30] 화면이 전기 완료 상태로 바뀌었는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "전기 완료", "전기완료", "거래전기 완료", "거래전기: 완료" }, stepTimeout, cancellationToken));
-            await StepAsync(progress, "[27/30] 회계전표 동일자생성 버튼을 클릭합니다.", () => ClickTextAsync(page, "회계전표 동일자생성", stepTimeout, cancellationToken));
+            await StepAsync(progress, "[27/30] 회계전표 동일자생성 버튼을 클릭합니다.", () => ClickTextAsync(page, "회계전표 동일자생성", stepTimeout, cancellationToken, preferUpperArea: true));
             await StepAsync(progress, "[28/30] 회계전표입력 화면으로 이동했는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "회계전표입력", "회계전표 입력" }, stepTimeout, cancellationToken));
-            await StepAsync(progress, "[29/30] 원장전기[P] 버튼을 클릭합니다.", () => ClickTextAsync(page, "원장전기", stepTimeout, cancellationToken));
+            await StepAsync(progress, "[29/30] 원장전기[P] 버튼을 클릭합니다.", () => ClickTextAsync(page, "원장전기", stepTimeout, cancellationToken, preferUpperArea: true));
             await StepAsync(progress, "[30/30] 원장전기 완료 상태가 표시되는지 확인합니다.", () => WaitUntilAnyTextAsync(page, new[] { "원장전기: 완료", "원장전기 완료" }, stepTimeout, cancellationToken));
 
             progress.Report(AutomationProgress.Info("ERP 매출등록 자동화 절차가 완료되었습니다."));
@@ -193,9 +193,20 @@ public sealed class ErpAutomationService
         }
     }
 
-    private static Task ClickTextAsync(IPage page, string text, TimeSpan timeout, CancellationToken cancellationToken)
+    private static Task ClickTextAsync(
+        IPage page,
+        string text,
+        TimeSpan timeout,
+        CancellationToken cancellationToken,
+        bool preferUpperArea = false,
+        bool preferLowerArea = false)
     {
-        return RunInAnyFrameAsync(page, frame => ClickTextInFrameAsync(frame, text), $"'{text}' 클릭", timeout, cancellationToken);
+        return RunInAnyFrameAsync(
+            page,
+            frame => ClickTextInFrameAsync(frame, text, preferUpperArea, preferLowerArea),
+            $"'{text}' 클릭",
+            timeout,
+            cancellationToken);
     }
 
     private static async Task FillNearLabelAsync(
@@ -587,10 +598,10 @@ public sealed class ErpAutomationService
         return false;
     }
 
-    private static Task<bool> ClickTextInFrameAsync(IFrame frame, string text)
+    private static Task<bool> ClickTextInFrameAsync(IFrame frame, string text, bool preferUpperArea, bool preferLowerArea)
     {
         return frame.EvaluateAsync<bool>(
-            @"(text) => {
+            @"({ text, preferUpperArea, preferLowerArea }) => {
                 const normalize = value => (value || '').replace(/\s+/g, ' ').trim();
                 const normalizeKey = value => normalize(value).replace(/[\s()[\]{}<>\/\\:_-]/g, '');
                 const targetText = normalize(text);
@@ -617,6 +628,8 @@ public sealed class ErpAutomationService
                     if (item.value === targetText) value -= 1000;
                     if (item.key === targetKey) value -= 700;
                     if (isActionElement(item.element)) value -= 300;
+                    if (preferUpperArea && item.rect.top > window.innerHeight * 0.45) value += 700;
+                    if (preferLowerArea && item.rect.top < window.innerHeight * 0.45) value += 700;
                     value += Math.min(item.value.length, 300);
                     value += Math.min(item.rect.width * item.rect.height / 1000, 300);
                     return value;
@@ -648,7 +661,7 @@ public sealed class ErpAutomationService
                 }
                 return true;
             }",
-            text);
+            new { text, preferUpperArea, preferLowerArea });
     }
 
     private static Task<bool> FillNearLabelInFrameAsync(
