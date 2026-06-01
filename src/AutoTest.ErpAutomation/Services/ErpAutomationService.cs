@@ -930,7 +930,10 @@ public sealed class ErpAutomationService
                         || attrs.includes('pwd')
                         || attrs.includes('username')
                         || attrs.includes('userid')
-                        || attrs.includes('loginid');
+                        || attrs.includes('loginid')
+                        || attrs.includes('아이디')
+                        || attrs.includes('비밀번호')
+                        || attrs.includes('로그인아이디');
                 };
                 const controls = Array.from(document.querySelectorAll('input:not([type=hidden])'))
                     .filter(control => visible(control) && isCredentialControl(control));
@@ -1344,7 +1347,10 @@ public sealed class ErpAutomationService
                         || attrs.includes('newpassword')
                         || attrs.includes('username')
                         || attrs.includes('userid')
-                        || attrs.includes('loginid');
+                        || attrs.includes('loginid')
+                        || attrs.includes('아이디')
+                        || attrs.includes('비밀번호')
+                        || attrs.includes('로그인아이디');
                 };
                 const chooseValue = control => {
                     const type = normalize(control.getAttribute('type')).toLowerCase();
@@ -1626,8 +1632,24 @@ public sealed class ErpAutomationService
                             input[id*='userid' i],
                             input[name*='loginid' i],
                             input[id*='loginid' i],
+                            input[name*='아이디'],
+                            input[id*='아이디'],
+                            input[placeholder*='아이디'],
+                            input[aria-label*='아이디'],
+                            input[name*='로그인아이디'],
+                            input[id*='로그인아이디'],
+                            input[placeholder*='로그인아이디'],
+                            input[aria-label*='로그인아이디'],
+                            input[name*='비밀번호'],
+                            input[id*='비밀번호'],
+                            input[placeholder*='비밀번호'],
+                            input[aria-label*='비밀번호'],
                             textarea[name*='password' i],
-                            textarea[id*='password' i] {
+                            textarea[id*='password' i],
+                            textarea[name*='비밀번호'],
+                            textarea[id*='비밀번호'],
+                            textarea[placeholder*='비밀번호'],
+                            textarea[aria-label*='비밀번호'] {
                                 color: transparent !important;
                                 text-shadow: none !important;
                                 caret-color: transparent !important;
@@ -1772,7 +1794,10 @@ public sealed class ErpAutomationService
                         || attrs.includes('newpassword')
                         || attrs.includes('username')
                         || attrs.includes('userid')
-                        || attrs.includes('loginid');
+                        || attrs.includes('loginid')
+                        || attrs.includes('아이디')
+                        || attrs.includes('비밀번호')
+                        || attrs.includes('로그인아이디');
                 };
                 const valueOf = element => {
                     if (isCredentialControl(element)) return '(masked)';
@@ -1830,7 +1855,10 @@ public sealed class ErpAutomationService
                         || attrs.includes('newpassword')
                         || attrs.includes('username')
                         || attrs.includes('userid')
-                        || attrs.includes('loginid');
+                        || attrs.includes('loginid')
+                        || attrs.includes('아이디')
+                        || attrs.includes('비밀번호')
+                        || attrs.includes('로그인아이디');
                 };
                 const selector = 'input, textarea, [contenteditable=true]';
                 const sourceControls = Array.from(document.querySelectorAll(selector));
