@@ -12,7 +12,13 @@ WSL에서는 WPF 앱이 직접 실행되지 않는다. Windows 터미널이나 P
 
 ## 게시 파일 생성
 
-운영 PC에 복사할 실행 파일은 Windows PowerShell에서 아래 명령으로 만든다.
+운영 PC에 복사할 실행 파일은 Windows PowerShell에서 아래 스크립트로 만든다.
+
+```powershell
+.\scripts\publish-windows.ps1
+```
+
+스크립트가 실행하는 게시 명령은 아래와 같다.
 
 ```powershell
 dotnet publish .\src\AutoTest.ErpAutomation\AutoTest.ErpAutomation.csproj -c Release -r win-x64 --self-contained false -o .\publish\AutoTest.ErpAutomation

@@ -19,6 +19,7 @@ Chrome에 ERP 로그인 정보가 저장되어 있어야 합니다. 프로그램
 운영 절차는 [docs/RUNBOOK.md](docs/RUNBOOK.md)를 기준으로 확인합니다.
 
 개발 실행과 게시 파일 생성은 [docs/BUILD_AND_RUN.md](docs/BUILD_AND_RUN.md)를 기준으로 진행합니다.
+Windows 게시 파일은 `scripts/publish-windows.ps1`로 생성합니다.
 
 Chrome 연결은 원격 디버깅 포트 `9222`를 기준으로 합니다.
 
